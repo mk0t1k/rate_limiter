@@ -10,7 +10,7 @@
 
 namespace avito_limiter {
 
-class TokenBucket : public IrateLimiter {
+class TokenBucket : public IRateLimiter {
 public:
   using clock_type = std::chrono::steady_clock;
   using timepoint_type = decltype(clock_type::now());

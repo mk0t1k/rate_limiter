@@ -9,7 +9,7 @@
 
 namespace avito_limiter {
 
-class SlidingWindowLog : public IrateLimiter {
+class SlidingWindowLog : public IRateLimiter {
 public:
 	void SetCapacity(std::size_t tgt);
 	
