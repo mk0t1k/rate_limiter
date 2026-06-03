@@ -1,12 +1,15 @@
+<<<<<<< HEAD
 *.lai
 *.la
 *.a
 *.lib
+*.o
 
 # Executables
 *.exe
 *.out
 *.app
+*.elf
 
 # Build directories
 build/
