@@ -10,3 +10,5 @@ FILE(GLOB RATE_LIMITER_APP_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 add_executable(${PROJECT_NAME} ${RATE_LIMITER_APP_SRC})
 
 add_definitions("-g")
+
+add_subdirectory(benchmark)
