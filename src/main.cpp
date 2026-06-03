@@ -12,7 +12,7 @@
 #include "token_bucket.hpp"
 
 int main() {
-  avito_limiter::IrateLimiter* limiter = 
+  avito_limiter::IRateLimiter* limiter = 
     new avito_limiter::TokenBucket{3U, 2U, 3.0};
   std::atomic<bool> work;
   work.store(true, std::memory_order_relaxed);

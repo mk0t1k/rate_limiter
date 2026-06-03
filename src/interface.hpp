@@ -9,7 +9,7 @@ namespace avito_limiter {
 
 using key_type = std::string;
 
-class IrateLimiter {
+class IRateLimiter {
 public:
   std::size_t GetQueryLimit() const noexcept;
 
@@ -17,7 +17,7 @@ public:
 
   virtual bool Receive(const key_type& key) = 0;
   
-  virtual ~IrateLimiter() = default;
+  virtual ~IRateLimiter() = default;
 protected:
   std::size_t curr_limit_ = 0U;
   std::mutex intfc_mutex_;
