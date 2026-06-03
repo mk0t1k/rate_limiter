@@ -37,3 +37,8 @@ vcpkg_installed/
 Testing/
 .cache/
 .vscode/
+*.o
+*.elf
+*.exe
+.vscode/
+build/
