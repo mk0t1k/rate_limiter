@@ -4,43 +4,44 @@
 
 #include <algorithm>
 #include <chrono>
-#include <mutex>
+
+#include "interface.hpp"
+
+namespace {
+
+constexpr float kTokBuckEpsilon = 1e-4;
+constexpr float kTokBuckUnitPos = 1.0F - kTokBuckEpsilon;
+} // namespace
 
 namespace avito_limiter {
 
-TokenBucket::TokenBucket(std::size_t cap, std::size_t initial_cap,
-                         double r_refill)
-    : capacity_{cap}, refill_rt_{r_refill}, last_{clock_type::now()} {
-  curr_limit_ = std::min(capacity_, initial_cap);
+void TokenBucketAlgo::Update() const noexcept {
+  time_point curr = clock_type::now();
+  float dur_sec = std::chrono::duration<float>(curr - last_access_).count();
+  last_access_ = curr;
+  float cnt_refill = std::min(capacity_, refill_tok_sec_ * dur_sec);
+  curr_tok_ = std::min(capacity_, cnt_refill + curr_tok_);
 }
 
-void TokenBucket::SetCapacity(std::size_t tgt) {
-  std::lock_guard lock(intfc_mutex_);
-  capacity_ = tgt;
-  if (curr_limit_ > tgt) {
-    curr_limit_ = tgt;
-  }
+TokenBucketAlgo::TokenBucketAlgo() : last_access_{clock_type::now()} {}
+
+TokenBucketAlgo::TokenBucketAlgo(float v_refill, std::size_t capacity) : 
+  last_access_{clock_type::now()}, refill_tok_sec_{v_refill} {
+  capacity_ = float(capacity);
+  curr_tok_ = capacity_;
 }
 
-void TokenBucket::SetRefillRate(double tk_per_sec) {
-  std::lock_guard lock(intfc_mutex_);
-  refill_rt_ = tk_per_sec;
-}
-
-void TokenBucket::Update() noexcept {
-  timepoint_type curr = clock_type::now();
-  double elapsed_sec = std::chrono::duration<double>(curr - last_).count();
-  curr_limit_ =
-      std::min(curr_limit_ + std::size_t(elapsed_sec * refill_rt_), capacity_);
-  last_ = curr;
-}
-
-bool TokenBucket::Receive(const key_type& key) {
-  std::lock_guard lock(intfc_mutex_);
-  if (curr_limit_) {
-    --curr_limit_;
+bool TokenBucketAlgo::Access() noexcept {
+  Update();
+  if(curr_tok_ >= kTokBuckUnitPos) {
+    curr_tok_ -= 1.0F;
     return true;
   }
   return false;
+}
+
+std::size_t TokenBucketAlgo::GetNumAvail() const noexcept {
+  Update();
+  return (std::size_t)curr_tok_;
 }
 }  // namespace avito_limiter

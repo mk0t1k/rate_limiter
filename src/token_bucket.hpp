@@ -2,33 +2,29 @@
 
 #include <cstddef>
 
-#include <algorithm>
 #include <chrono>
-#include <mutex>
 
 #include "interface.hpp"
 
 namespace avito_limiter {
 
-class TokenBucket : public IRateLimiter {
-public:
+class TokenBucketAlgo {
   using clock_type = std::chrono::steady_clock;
-  using timepoint_type = decltype(clock_type::now());
+  using time_point = decltype(clock_type::now());
 
-  TokenBucket(std::size_t cap, std::size_t initial_cap, 
-    double r_refill);
+  mutable time_point last_access_;
+  float refill_tok_sec_ = 0.0F;
+  mutable float curr_tok_ = 0.0F;
+  float capacity_ = 0.0F;
 
-	void SetCapacity(std::size_t tgt);
-	
-	void SetRefillRate(double tk_per_sec);
+  void Update() const noexcept;
+public:
+  TokenBucketAlgo();
+  
+  TokenBucketAlgo(float v_refill, std::size_t capacity);
 
-  void Update() noexcept override;
+  bool Access() noexcept;
 
-  bool Receive(const key_type& key) override;
-private:
-  std::size_t capacity_ = 0U;
-  double refill_rt_ = 0.0;
-
-  timepoint_type last_;
+  std::size_t GetNumAvail() const noexcept;
 };
 } // namespace avito_limiter

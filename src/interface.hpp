@@ -11,15 +11,17 @@ using key_type = std::string;
 
 class IRateLimiter {
 public:
-  std::size_t GetQueryLimit() const noexcept;
+  virtual bool Access(const key_type& key) = 0;
 
-  virtual void Update() noexcept = 0;
+  virtual std::size_t GetNumAvail(
+    const key_type& key) const noexcept = 0;
 
-  virtual bool Receive(const key_type& key) = 0;
-  
   virtual ~IRateLimiter() = default;
-protected:
-  std::size_t curr_limit_ = 0U;
-  std::mutex intfc_mutex_;
+};
+
+template<typename T>
+concept RateLimAlgorithm = std::semiregular<T> && requires(T a, const T b) {
+  {a.Access()} -> std::convertible_to<bool>;
+  {b.GetNumAvail()} noexcept -> std::convertible_to<std::size_t>;
 };
 } // namespace avito_limiter
