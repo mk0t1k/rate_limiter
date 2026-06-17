@@ -1,45 +1,28 @@
-#include <cstddef>
+#include "limiters.hpp"
+#include "mutex_storage.hpp"
+#include "sharded_storage.hpp"
+#include "meta.hpp"
 
-#include <atomic>
-#include <algorithm>
-#include <chrono>
 #include <iostream>
-#include <mutex>
-#include <string>
-#include <thread>
-
-#include "interface.hpp"
-#include "token_bucket.hpp"
+#include <vector>
 
 int main() {
-  avito_limiter::IrateLimiter* limiter = 
-    new avito_limiter::TokenBucket{3U, 2U, 3.0};
-  std::atomic<bool> work;
-  work.store(true, std::memory_order_relaxed);
-  std::thread update_thread{[limiter, &work]() {
-    while (work.load(std::memory_order_relaxed)){
-      limiter->Update();
-      std::this_thread::sleep_for(std::chrono::milliseconds{1000});
-    }
-    std::cout << "Update thread finished\n";
-  }};
-  std::string curr;
+  avito_limiter::SlidingWindowAlgo limiter{3U, 4.0F};
+  std::vector<avito_limiter::key_type> keys = {"ab", "cd", "ef"};
+  avito_limiter::IRateLimiter* intfc = new avito_limiter::ShardedWinLimiter<3U, true>{
+    keys.begin(), keys.end(), limiter};
+  //avito_limiter::ShardedStorage<3, 
+  //  avito_limiter::key_type, avito_limiter::SlidingWindowAlgo> s_sharded{
+  //  keys.begin(), keys.end(), limiter};
+  
   while (true) {
-    if(curr == "exit") {
+    std::string key_name;
+    std::cin >> key_name;
+    if(key_name == "exit") {
       break;
     }
-    std::cout << limiter->GetQueryLimit() << "\n";
-    std::cin >> curr;
-    if(curr == "-") {
-      continue;
-    }
-    if(limiter->Receive(curr)) {
-      std::cout << "Ok\n";
-    } else {
-      std::cout << "Rate limit exceeded\n";
-    }
+    std::cout << intfc->Access(key_name) 
+      << " " << intfc->GetNumAvail(key_name) << "\n";
   }
-  work.store(false, std::memory_order_relaxed);
-  update_thread.join();
-  delete limiter;
+  delete intfc;
 }
