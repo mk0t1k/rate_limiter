@@ -20,12 +20,14 @@ template <class LimiterType>
 static void BM_Uniform_Traffic(benchmark::State& state) {
 
   double target_rate = static_cast<double>(state.range(0));
+  double per_thread_rate = target_rate / static_cast<double>(state.threads());
 
   thread_local std::mt19937 gen(std::random_device{}());
-  thread_local std::exponential_distribution<double> dist(target_rate);
+  thread_local std::exponential_distribution<double> dist(1.0);
+  dist.param(std::exponential_distribution<double>::param_type(per_thread_rate));
 
   std::vector<avito_limiter::key_type> keys = {"user_uniform"};
-  LimiterType limiter{keys.begin(), keys.end()};
+  static LimiterType limiter{keys.begin(), keys.end()};
 
   std::vector<double> latencies;
   latencies.reserve(kLatencyCapacity);
