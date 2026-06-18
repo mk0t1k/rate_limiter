@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "src/meta.hpp"
+#include "lib/meta.hpp"
 
 namespace am = avito_meta;
 
