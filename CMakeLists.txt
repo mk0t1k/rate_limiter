@@ -6,13 +6,19 @@ project(
 )
 
 set(CMAKE_CXX_STANDARD 23)
+
+add_subdirectory(lib)
+
 FILE(GLOB RATE_LIMITER_APP_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 add_executable(${PROJECT_NAME} ${RATE_LIMITER_APP_SRC})
+
+target_link_libraries(${PROJECT_NAME} limiter_lib)
+target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR})
 
 add_definitions("-g -Wno-interference-size")
 
 add_subdirectory(unit_tests)
-target_link_libraries(rate_limiter_tests PRIVATE gtest_main gmock_main)
+target_link_libraries(rate_limiter_tests PRIVATE limiter_lib gtest_main gmock_main)
 
 target_include_directories(rate_limiter_tests PUBLIC ${PROJECT_SOURCE_DIR})
 
