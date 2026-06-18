@@ -5,7 +5,13 @@ project(
     LANGUAGES CXX
 )
 
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose Debug or Release" FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(lib)
 
@@ -14,11 +20,11 @@ add_executable(${PROJECT_NAME} ${RATE_LIMITER_APP_SRC})
 
 target_link_libraries(${PROJECT_NAME} limiter_lib)
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR})
-
-add_definitions("-g -Wno-interference-size")
+target_compile_options(${PROJECT_NAME} PRIVATE -Wno-interference-size $<$<CONFIG:Debug>:-g>)
 
 add_subdirectory(unit_tests)
 target_link_libraries(rate_limiter_tests PRIVATE limiter_lib gtest_main gmock_main)
+target_compile_options(rate_limiter_tests PRIVATE -Wno-interference-size $<$<CONFIG:Debug>:-g>)
 
 target_include_directories(rate_limiter_tests PUBLIC ${PROJECT_SOURCE_DIR})
 
