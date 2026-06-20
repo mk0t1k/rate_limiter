@@ -1,5 +1,3 @@
-#include <type_traits>
-
 #include <gtest/gtest.h>
 
 #include "lib/meta.hpp"

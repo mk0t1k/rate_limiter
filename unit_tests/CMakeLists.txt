@@ -17,6 +17,7 @@ endif()
 add_executable(
   rate_limiter_tests
   meta_ut.cpp
+  token_bucket_ut.cpp
 )
 
 include(GoogleTest)
