@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include <chrono>
 
 namespace config {
@@ -15,4 +17,10 @@ namespace config {
   constexpr int kNumThreads = 8; 
 
   constexpr int kRepetitions = 1; // 5
+  
+  // For testing aligned and non-aligned sharded limiters
+  constexpr std::size_t kShardCapacity = 3;
+
+  constexpr std::size_t kCrossShardKeyLastInFirstShard = kShardCapacity - 1;
+  constexpr std::size_t kCrossShardKeyFirstInSecondShard = kShardCapacity;
 } // namespace config
