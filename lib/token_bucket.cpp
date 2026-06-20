@@ -27,7 +27,7 @@ TokenBucketAlgo::TokenBucketAlgo() : last_access_{clock_type::now()} {}
 
 TokenBucketAlgo::TokenBucketAlgo(float v_refill, std::size_t capacity) : 
   last_access_{clock_type::now()}, refill_tok_sec_{v_refill} {
-  capacity_ = float(capacity);
+  capacity_ = static_cast<float>(capacity);
   curr_tok_ = capacity_;
 }
 
@@ -42,6 +42,6 @@ bool TokenBucketAlgo::Access() noexcept {
 
 std::size_t TokenBucketAlgo::GetNumAvail() const noexcept {
   Update();
-  return (std::size_t)curr_tok_;
+  return static_cast<std::size_t>(curr_tok_);
 }
 }  // namespace avito_limiter

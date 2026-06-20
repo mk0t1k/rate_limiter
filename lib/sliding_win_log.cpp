@@ -35,6 +35,6 @@ bool SlidingWindowAlgo::Access() {
 
 std::size_t SlidingWindowAlgo::GetNumAvail() const noexcept {
   Update();
-  return (std::size_t)(capacity_ - accesses_.size());
+  return static_cast<std::size_t>(capacity_ - accesses_.size());
 }
 } // namespace avito_limiter
