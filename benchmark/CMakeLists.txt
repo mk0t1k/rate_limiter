@@ -14,7 +14,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(googlebenchmark)
 
-add_executable(rate_limiter_bench ${CMAKE_CURRENT_SOURCE_DIR}/uniform_bm.cpp)
+add_executable(rate_limiter_bench ${CMAKE_CURRENT_SOURCE_DIR}/uniform_bm.cpp
+                                  ${CMAKE_CURRENT_SOURCE_DIR}/diurnal_bm.cpp
+)
 
 target_compile_features(rate_limiter_bench PRIVATE cxx_std_23)
 target_compile_options(
