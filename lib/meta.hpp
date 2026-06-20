@@ -48,7 +48,7 @@ struct ValueConditional<T, false, P, N> final {
   static constexpr T value = N;
 
   constexpr operator T() noexcept {
-    return P;
+    return N;
   }
 };
 } // namespace avito_meta
