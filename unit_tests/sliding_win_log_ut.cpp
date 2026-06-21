@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "lib/sliding_win_log.hpp"
+#include "mock_clock.hpp"
 
 namespace al = avito_limiter;
 
@@ -12,7 +13,7 @@ using namespace std::chrono_literals;
 class SlidingWindowTests : public ::testing::Test {
 protected:
     SlidingWindowTests() : algo{3, 2.} {}
-    al::SlidingWindowAlgo algo;
+    al::SlidingWindowAlgo<MockClock> algo;
 };
 
 TEST_F(SlidingWindowTests, StandardWinLogicTest) {
@@ -49,14 +50,14 @@ TEST_F(SlidingWindowTests, BadAccessTest) {
 }
 
 
-TEST(EdgeCasesSlidingWindowTests, ZeroCapTest) {
+TEST(EdegCasesSlidignWindowTests, ZeroCapTest) {
     al::SlidingWindowAlgo zero_cap{0, 1.};
     EXPECT_FALSE(zero_cap.Access());
     std::this_thread::sleep_for(500ms);
     EXPECT_FALSE(zero_cap.Access());
 }
 
-TEST(EdgeCasesSlidingWindowTests, ZeroWinSizeTest) {
+TEST(EdegCasesSlidignWindowTests, ZeroWinSizeTest) {
     al::SlidingWindowAlgo zero_win{3, 0.};
     for (size_t i = 0; i < 10; ++i) {
         EXPECT_TRUE(zero_win.Access());
@@ -64,11 +65,11 @@ TEST(EdgeCasesSlidingWindowTests, ZeroWinSizeTest) {
     EXPECT_EQ(zero_win.GetNumAvail(), 3);
 }
 
-TEST(EdgeCasesSlidingWindowTests, NegWinSizeTest) {
+TEST(EdegCasesSlidignWindowTests, NegWinSizeTest) {
     EXPECT_DEBUG_DEATH(al::SlidingWindowAlgo(3, -1), "");
 }
 
-TEST(EdgeCasesSlidingWindowTests, InfWinSizeTest) {
+TEST(EdegCasesSlidignWindowTests, InfWinSizeTest) {
     al::SlidingWindowAlgo inf_win{3, std::numeric_limits<float>::infinity()};
     EXPECT_TRUE(inf_win.Access());
     EXPECT_TRUE(inf_win.Access());
@@ -81,7 +82,7 @@ TEST(EdgeCasesSlidingWindowTests, InfWinSizeTest) {
     EXPECT_FALSE(inf_win.Access());
 }
 
-TEST(EdgeCasesSlidingWindowTests, NANWinSizeTest) {
+TEST(EdegCasesSlidignWindowTests, NANWinSizeTest) {
     EXPECT_DEBUG_DEATH(al::SlidingWindowAlgo(3, std::numeric_limits<float>::quiet_NaN()), "");
     EXPECT_DEBUG_DEATH(al::SlidingWindowAlgo(3, std::numeric_limits<float>::signaling_NaN()), "");
 }
