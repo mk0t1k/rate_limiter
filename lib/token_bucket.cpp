@@ -25,7 +25,8 @@ void TokenBucketAlgo::Update() const noexcept {
 
 TokenBucketAlgo::TokenBucketAlgo() : last_access_{clock_type::now()} {}
 
-TokenBucketAlgo::TokenBucketAlgo(float v_refill, std::size_t capacity) : 
+TokenBucketAlgo::TokenBucketAlgo(float v_refill, std::size_t capacity, 
+  time_val_t ttl_val) : AlgBase{ttl_val},
   last_access_{clock_type::now()}, refill_tok_sec_{v_refill} {
   capacity_ = static_cast<float>(capacity);
   curr_tok_ = capacity_;
