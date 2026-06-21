@@ -10,11 +10,15 @@
 #include <variant>
 
 #include "interface.hpp"
+#include "ttl.hpp"
 
 namespace avito_limiter {
 
 template<requirements::RateLimiterLogic Alg, typename KeyType>
 class MutexStorage final {
+public:
+  using ttl_dur_t = typename TtlValue::value_type;
+private:
   struct Data {
     mutable std::mutex mtx;
     Alg rate_limiter;
@@ -27,12 +31,13 @@ class MutexStorage final {
   using iter_type = typename stored_type::iterator;
 
 public:
+
   MutexStorage() = default;
 
   template<std::input_iterator InputIt, typename Sentinel>
   MutexStorage(InputIt begin, Sentinel end) {
     while (begin != end) {
-      keys_.emplace(*begin, Alg{});
+      keys_.try_emplace(*begin, Alg{});
       ++begin;
     }
   }
@@ -40,29 +45,17 @@ public:
   template<std::input_iterator InputIt, typename Sentinel>
   MutexStorage(InputIt begin, Sentinel end, const Alg& init_alg) {
     while (begin != end) {
-      keys_.emplace(*begin, init_alg);
+      keys_.try_emplace(*begin, init_alg);
       ++begin;
     }
   }
 
-  template<typename Func, typename ... Args>
-  auto Visit(const KeyType& key, Func&& func, 
+  template<typename Self, typename Func, typename ... Args>
+  auto Visit(this Self&& self, const KeyType& key, Func&& func, 
     Args&&... args) -> std::variant<std::false_type, 
     std::invoke_result_t<Func, Alg&, Args...>> {
-    auto it = keys_.find(key);
-    if(it != keys_.end()) {
-      std::lock_guard lock(it->second.mtx);
-      return std::forward<Func>(func)(it->second.rate_limiter, std::forward<Args>(args)...);
-    }
-    return std::false_type{};
-  }
-
-  template<typename Func, typename ... Args>
-  auto Visit(const KeyType& key, Func&& func, 
-    Args&&... args) const -> std::variant<std::false_type, 
-    std::invoke_result_t<Func, Alg&, Args...>> {
-    auto it = keys_.find(key);
-    if(it != keys_.end()) {
+    auto it = self.keys_.find(key);
+    if(it != self.keys_.end()) {
       std::lock_guard lock(it->second.mtx);
       return std::forward<Func>(func)(it->second.rate_limiter, std::forward<Args>(args)...);
     }

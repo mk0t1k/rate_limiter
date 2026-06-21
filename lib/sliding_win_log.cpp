@@ -21,10 +21,10 @@ void SlidingWindowAlgo::Update() const {
 }
 
 SlidingWindowAlgo::SlidingWindowAlgo(
-  std::size_t capacity, float dur_sec) : 
-  capacity_{capacity}, time_offs_sec_{dur_sec} {}
+  std::size_t capacity, float dur_sec, time_val_t ttl_val) : 
+  AlgBase{ttl_val}, capacity_{capacity}, time_offs_sec_{dur_sec} {}
 
-bool SlidingWindowAlgo::Access() {
+bool SlidingWindowAlgo::Verify() {
   Update();
   if(accesses_.size() == capacity_) {
     return false;
@@ -33,7 +33,7 @@ bool SlidingWindowAlgo::Access() {
   return true;
 }
 
-std::size_t SlidingWindowAlgo::GetNumAvail() const noexcept {
+std::size_t SlidingWindowAlgo::GetAvail() const noexcept {
   Update();
   return static_cast<std::size_t>(capacity_ - accesses_.size());
 }

@@ -25,13 +25,14 @@ void TokenBucketAlgo::Update() const noexcept {
 
 TokenBucketAlgo::TokenBucketAlgo() : last_access_{clock_type::now()} {}
 
-TokenBucketAlgo::TokenBucketAlgo(float v_refill, std::size_t capacity) : 
+TokenBucketAlgo::TokenBucketAlgo(float v_refill, std::size_t capacity, 
+  time_val_t ttl_val) : AlgBase{ttl_val},
   last_access_{clock_type::now()}, refill_tok_sec_{v_refill} {
   capacity_ = static_cast<float>(capacity);
   curr_tok_ = capacity_;
 }
 
-bool TokenBucketAlgo::Access() noexcept {
+bool TokenBucketAlgo::Verify() noexcept {
   Update();
   if(curr_tok_ >= kTokBuckUnitPos) {
     curr_tok_ -= 1.0F;
@@ -40,7 +41,7 @@ bool TokenBucketAlgo::Access() noexcept {
   return false;
 }
 
-std::size_t TokenBucketAlgo::GetNumAvail() const noexcept {
+std::size_t TokenBucketAlgo::GetAvail() const noexcept {
   Update();
   return static_cast<std::size_t>(curr_tok_);
 }

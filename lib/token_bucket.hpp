@@ -4,11 +4,13 @@
 
 #include <chrono>
 
+#include "alg_base.hpp"
 #include "interface.hpp"
+#include "ttl.hpp"
 
 namespace avito_limiter {
 
-class TokenBucketAlgo {
+class TokenBucketAlgo final: public AlgBase<TokenBucketAlgo> {
   using clock_type = std::chrono::steady_clock;
   using time_point = decltype(clock_type::now());
 
@@ -19,12 +21,15 @@ class TokenBucketAlgo {
 
   void Update() const noexcept;
 public:
+  using time_val_t = typename AlgBase::value_type;
+
   TokenBucketAlgo();
   
-  TokenBucketAlgo(float v_refill, std::size_t capacity);
+  TokenBucketAlgo(float v_refill, std::size_t capacity, 
+    time_val_t ttl_val=TtlValue::kNoTtl);
 
-  bool Access() noexcept;
+  bool Verify() noexcept;
 
-  std::size_t GetNumAvail() const noexcept;
+  std::size_t GetAvail() const noexcept;
 };
 } // namespace avito_limiter
