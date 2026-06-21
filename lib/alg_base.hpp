@@ -1,17 +1,19 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 
 #include "ttl.hpp"
 
 namespace avito_limiter {
 
-template<typename Derived>
+template<typename Derived, typename Clock = std::chrono::steady_clock>
 class AlgBase {
 public:
-  using value_type = typename TtlValue::value_type;
+  using TtlValue_t = TtlValue<Clock>;
+  using value_type = typename TtlValue_t::value_type;
 private:
-  mutable TtlValue ttl_;
+  mutable TtlValue_t ttl_;
   value_type prolong_sec_;
 protected:
 

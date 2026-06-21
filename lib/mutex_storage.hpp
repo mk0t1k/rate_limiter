@@ -17,7 +17,8 @@ namespace avito_limiter {
 template<requirements::RateLimiterLogic Alg, typename KeyType>
 class MutexStorage final {
 public:
-  using ttl_dur_t = typename TtlValue::value_type;
+  using TtlValue_t = TtlValue<typename Alg::clock_type>;
+  using ttl_dur_t = typename TtlValue_t::value_type;
 private:
   struct Data {
     mutable std::mutex mtx;
