@@ -25,7 +25,8 @@ public:
 
   TokenBucketAlgo();
   
-  TokenBucketAlgo(float v_refill, std::size_t capacity);
+  TokenBucketAlgo(float v_refill, std::size_t capacity, 
+    time_val_t ttl_val=TtlValue::kNoTtl);
 
   bool Verify() noexcept;
 
