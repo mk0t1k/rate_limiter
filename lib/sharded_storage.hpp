@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 
 #include "aligned_alloc.hpp"
 #include "meta.hpp"
@@ -139,7 +140,7 @@ public:
     if(it != data_index_.end()) {
       alg_pos_type pos = it->second;
       std::lock_guard lock(pos.first->mtx);
-      return func(*(pos.second), args...);
+      return std::forward<Func>(func)(*(pos.second), std::forward<Args>(args)...);
     }
     return std::false_type{};
   }
@@ -152,7 +153,7 @@ public:
     if(it != data_index_.end()) {
       alg_pos_type pos = it->second;
       std::lock_guard lock(pos.first->mtx);
-      return func(*(pos.second), args...);
+      return std::forward<Func>(func)(*(pos.second), std::forward<Args>(args)...);
     }
     return std::false_type{};
   }
