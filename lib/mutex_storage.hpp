@@ -6,6 +6,7 @@
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 
 #include "interface.hpp"
@@ -51,7 +52,7 @@ public:
     auto it = keys_.find(key);
     if(it != keys_.end()) {
       std::lock_guard lock(it->second.mtx);
-      return func(it->second.rate_limiter, args...);
+      return std::forward<Func>(func)(it->second.rate_limiter, std::forward<Args>(args)...);
     }
     return std::false_type{};
   }
@@ -63,7 +64,7 @@ public:
     auto it = keys_.find(key);
     if(it != keys_.end()) {
       std::lock_guard lock(it->second.mtx);
-      return func(it->second.rate_limiter, args...);
+      return std::forward<Func>(func)(it->second.rate_limiter, std::forward<Args>(args)...);
     }
     return std::false_type{};
   }
