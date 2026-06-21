@@ -19,6 +19,7 @@ add_executable(
   meta_ut.cpp
   token_bucket_ut.cpp
   sliding_win_log_ut.cpp
+  leaking_bucket_ut.cpp
 )
 
 include(GoogleTest)
