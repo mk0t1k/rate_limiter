@@ -58,12 +58,13 @@ TEST_F(TokenBucketTest, ExcedingTokenLimitTest) {
     EXPECT_EQ(algo.GetNumAvail(), 3);
 }
 
-TEST_F(TokenBucketTest, ZeroCapacity) {
+
+TEST(TokenBucketEdgeCasesTest, ZeroCapacity) {
     al::TokenBucketAlgo zero_cap{1., 0};
     EXPECT_FALSE(zero_cap.Access());
 }
 
-TEST_F(TokenBucketTest, ZeroRefill) {
+TEST(TokenBucketEdgeCasesTest, ZeroRefill) {
     al::TokenBucketAlgo zero_refill{0., 2};
     EXPECT_TRUE(zero_refill.Access());
     EXPECT_TRUE(zero_refill.Access());
@@ -72,7 +73,7 @@ TEST_F(TokenBucketTest, ZeroRefill) {
     EXPECT_FALSE(zero_refill.Access());
 }
 
-TEST_F(TokenBucketTest, InfinityRefillTest) {
+TEST(TokenBucketEdgeCasesTest, InfinityRefillTest) {
     al::TokenBucketAlgo inf_refill{std::numeric_limits<float>::infinity(), 2};
     for (size_t i = 0; i < 10; ++i) {
         EXPECT_TRUE(inf_refill.Access());
@@ -80,7 +81,7 @@ TEST_F(TokenBucketTest, InfinityRefillTest) {
     EXPECT_EQ(inf_refill.GetNumAvail(), 2);
 }
 
-TEST_F(TokenBucketTest, NegativeRefillTest) {
+TEST(TokenBucketEdgeCasesTest, NegativeRefillTest) {
     al::TokenBucketAlgo neg_refill{-1, 2};
     std::this_thread::sleep_for(2s);
     EXPECT_FALSE(neg_refill.Access());
@@ -88,7 +89,7 @@ TEST_F(TokenBucketTest, NegativeRefillTest) {
     EXPECT_FALSE(neg_refill.Access());
 }
 
-TEST_F(TokenBucketTest, NanRefillTest) {
+TEST(TokenBucketEdgeCasesTest, NanRefillTest) {
     EXPECT_DEBUG_DEATH(al::TokenBucketAlgo(std::numeric_limits<float>::quiet_NaN(), 2), "");
     EXPECT_DEBUG_DEATH(al::TokenBucketAlgo(std::numeric_limits<float>::signaling_NaN(), 2), "");
 }
