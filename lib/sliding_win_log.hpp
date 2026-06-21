@@ -5,11 +5,13 @@
 #include <chrono>
 #include <queue>
 
+#include "alg_base.hpp"
 #include "interface.hpp"
+#include "ttl.hpp"
 
 namespace avito_limiter {
 
-class SlidingWindowAlgo {
+class SlidingWindowAlgo final : public AlgBase<SlidingWindowAlgo> {
   using clock_type = std::chrono::steady_clock;
   using time_point = decltype(clock_type::now());
   using duration_type = typename clock_type::duration;
@@ -22,13 +24,15 @@ class SlidingWindowAlgo {
 
   void Update() const;
 public:
+  using time_val_t = typename AlgBase::value_type;
+
   SlidingWindowAlgo() = default;
 
   SlidingWindowAlgo(
-    std::size_t capacity, float dur_sec);
+    std::size_t capacity, float dur_sec, time_val_t ttl_val=TtlValue::kNoTtl);
 
-  bool Access();
+  bool Verify();
 
-  std::size_t GetNumAvail() const noexcept;
+  std::size_t GetAvail() const noexcept;
 };
 } // namespace avito_limiter

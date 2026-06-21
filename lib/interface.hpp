@@ -49,10 +49,13 @@ concept PolyRateLimiter = requires() {
 };
 } // namespace requirements
 
-template<template<requirements::RateLimiterLogic, typename ...> typename Container, 
-  requirements::RateLimiterLogic Alg, typename ... Aargs>
+template<
+  template<requirements::RateLimiterLogic, typename ...> typename Container, 
+  requirements::RateLimiterLogic Alg, 
+  typename ... Aargs
+>
 requires requirements::Storage<Container<Alg, Aargs...>, Alg>
-class RateLimiterWrapper : public IRateLimiter {
+class RateLimiterWrapper final : public IRateLimiter {
   Container<Alg, Aargs...> storage_;
 public:
   template<typename ... Args>
