@@ -12,85 +12,104 @@ namespace al = avito_limiter;
 
 using namespace std::chrono_literals;
 
-class TokenBucketTest : public ::testing::Test {
+using AlgType = al::TokenBucketAlgo<MockClock>;
+
+class TokenBucketTests : public ::testing::Test {
 protected:
-    TokenBucketTest() : algo{1., 3} {}
-    al::TokenBucketAlgo<MockClock> algo;
+
+    void TearDown() override {
+        MockClock::reset();
+    }
+
+    TokenBucketTests() : 
+        algo(std::make_unique<AlgType>(1., 3)),
+        algo_with_ttl(std::make_unique<AlgType>(10., 10, 10)) {}
+    
+    std::unique_ptr<al::AlgBase<AlgType, MockClock>> algo;
+    std::unique_ptr<al::AlgBase<AlgType, MockClock>> algo_with_ttl;
 };
 
-TEST_F(TokenBucketTest, InitialStateTest) {
-    EXPECT_EQ(algo.GetNumAvail(), 3);
+TEST_F(TokenBucketTests, InitialStateTest) {
+    EXPECT_EQ(algo->GetNumAvail(), 3);
 }
 
-TEST_F(TokenBucketTest, LackOfTokensTest) {
-    EXPECT_TRUE(algo.Access());
-    EXPECT_TRUE(algo.Access());
-    EXPECT_TRUE(algo.Access());
-    EXPECT_FALSE(algo.Access());
+TEST_F(TokenBucketTests, LackOfTokensTest) {
+    EXPECT_TRUE(algo->Access());
+    EXPECT_TRUE(algo->Access());
+    EXPECT_TRUE(algo->Access());
+    EXPECT_FALSE(algo->Access());
 }
 
-TEST_F(TokenBucketTest, TokensRefillTest) {
-    EXPECT_TRUE(algo.Access());
-    EXPECT_TRUE(algo.Access());
-    EXPECT_TRUE(algo.Access());
+TEST_F(TokenBucketTests, TokensRefillTest) {
+    EXPECT_TRUE(algo->Access());
+    EXPECT_TRUE(algo->Access());
+    EXPECT_TRUE(algo->Access());
 
-    std::this_thread::sleep_for(1.1s);
+    MockClock::advance(999ms);
+    EXPECT_FALSE(algo->Access());
 
-    EXPECT_TRUE(algo.Access());
-    EXPECT_FALSE(algo.Access());
+    MockClock::advance(1ms);
+    EXPECT_TRUE(algo->Access());
+    EXPECT_FALSE(algo->Access());
 }
 
-TEST_F(TokenBucketTest, TokensCountAfterQueriesTest) {
-    al::TokenBucketAlgo algo {0.8, 2};
-    algo.Access();
-    algo.Access();
-    EXPECT_EQ(algo.GetNumAvail(), 0);
-    std::this_thread::sleep_for(500ms);
-    EXPECT_EQ(algo.GetNumAvail(), 0);
-    std::this_thread::sleep_for(1500ms);
-    EXPECT_EQ(algo.GetNumAvail(), 1);
-}
-
-TEST_F(TokenBucketTest, ExcedingTokenLimitTest) {
-    EXPECT_TRUE(algo.Access());
-    EXPECT_TRUE(algo.Access());
-    EXPECT_TRUE(algo.Access());
-    std::this_thread::sleep_for(6s);
-    EXPECT_EQ(algo.GetNumAvail(), 3);
+TEST_F(TokenBucketTests, ExcedingTokenLimitTest) {
+    EXPECT_TRUE(algo->Access());
+    EXPECT_TRUE(algo->Access());
+    EXPECT_TRUE(algo->Access());
+    MockClock::advance(10s);
+    EXPECT_EQ(algo->GetNumAvail(), 3);
 }
 
 
-TEST(TokenBucketEdgeCasesTest, ZeroCapacity) {
-    al::TokenBucketAlgo zero_cap{1., 0};
+TEST_F(TokenBucketTests, TtlBoundsTest) {
+    EXPECT_TRUE(algo_with_ttl->Access());
+    
+    MockClock::advance(9999ms);
+    EXPECT_TRUE(algo_with_ttl->Access());
+
+    MockClock::advance(2ms);
+    EXPECT_TRUE(algo_with_ttl->Access());
+
+    MockClock::advance(10001ms);
+    EXPECT_FALSE(algo_with_ttl->Access());
+}
+
+
+TEST(TokenBucketEdgeCasesTests, ZeroCapacity) {
+    AlgType zero_cap{1., 0};
     EXPECT_FALSE(zero_cap.Access());
 }
 
-TEST(TokenBucketEdgeCasesTest, ZeroRefill) {
-    al::TokenBucketAlgo zero_refill{0., 2};
+TEST(TokenBucketEdgeCasesTests, ZeroRefill) {
+    AlgType zero_refill{0., 2};
     EXPECT_TRUE(zero_refill.Access());
     EXPECT_TRUE(zero_refill.Access());
     EXPECT_FALSE(zero_refill.Access());
-    std::this_thread::sleep_for(1s);
+    MockClock::advance(10s);
     EXPECT_FALSE(zero_refill.Access());
+    EXPECT_EQ(zero_refill.GetNumAvail(), 0);
 }
 
-TEST(TokenBucketEdgeCasesTest, InfinityRefillTest) {
-    al::TokenBucketAlgo inf_refill{std::numeric_limits<float>::infinity(), 2};
+TEST(TokenBucketEdgeCasesTests, InfinityRefillTest) {
+    AlgType inf_refill{std::numeric_limits<float>::infinity(), 2};
     for (size_t i = 0; i < 10; ++i) {
         EXPECT_TRUE(inf_refill.Access());
     }
     EXPECT_EQ(inf_refill.GetNumAvail(), 2);
 }
 
-TEST(TokenBucketEdgeCasesTest, NegativeRefillTest) {
-    al::TokenBucketAlgo neg_refill{-1, 2};
-    std::this_thread::sleep_for(2s);
+TEST(TokenBucketEdgeCasesTests, NegativeRefillTest) {
+    AlgType neg_refill{-1, 2};
+    MockClock::advance(2s);
     EXPECT_FALSE(neg_refill.Access());
-    std::this_thread::sleep_for(1s);
+    MockClock::advance(2s);
     EXPECT_FALSE(neg_refill.Access());
+
+    EXPECT_EQ(neg_refill.GetNumAvail(), 0);
 }
 
-TEST(TokenBucketEdgeCasesTest, NanRefillTest) {
-    EXPECT_DEBUG_DEATH(al::TokenBucketAlgo(std::numeric_limits<float>::quiet_NaN(), 2), "");
-    EXPECT_DEBUG_DEATH(al::TokenBucketAlgo(std::numeric_limits<float>::signaling_NaN(), 2), "");
+TEST(TokenBucketEdgeCasesTests, NanRefillTest) {
+    EXPECT_DEBUG_DEATH(AlgType(std::numeric_limits<float>::quiet_NaN(), 2), "");
+    EXPECT_DEBUG_DEATH(AlgType(std::numeric_limits<float>::signaling_NaN(), 2), "");
 }
