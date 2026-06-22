@@ -12,7 +12,7 @@ namespace al = avito_limiter;
 
 using namespace std::chrono_literals;
 
-using AlgType = al::SlidingWindowAlgo<MockClock>;
+using AlgType = al::StoredData<al::SlidingWindowAlgo, MockClock>;
 
 class SlidingWindowTests : public ::testing::Test {
 protected:
@@ -22,12 +22,13 @@ protected:
     }
     
     SlidingWindowTests() : 
-        algo(std::make_unique<AlgType>(3, 2.)),
-        algo_with_ttl(std::make_unique<AlgType>(10, 2., 10)) {}
+        algo(std::make_unique<AlgType>(std::nullopt, 3UZ, 2.0F)),
+        algo_with_ttl(std::make_unique<AlgType>(10.0, 10UZ, 2.0F)) {}
 
-    std::unique_ptr<al::AlgBase<AlgType, MockClock>> algo;
-    std::unique_ptr<al::AlgBase<AlgType, MockClock>> algo_with_ttl;
+    std::unique_ptr<AlgType> algo;
+    std::unique_ptr<AlgType> algo_with_ttl;
 };
+
 
 TEST_F(SlidingWindowTests, WindowBoundsTest) {
     EXPECT_EQ(algo->GetNumAvail(), 3);
@@ -77,14 +78,14 @@ TEST_F(SlidingWindowTests, TtlBoundsTest) {
 
 
 TEST(EdgeCasesSlidingWindowTests, ZeroCapTest) {
-    AlgType zero_cap{0, 1.};
+    AlgType zero_cap{std::nullopt, 0UZ, 1.0F};
     EXPECT_FALSE(zero_cap.Access());
     MockClock::advance(1000s);
     EXPECT_FALSE(zero_cap.Access());
 }
 
 TEST(EdgeCasesSlidingWindowTests, ZeroWinSizeTest) {
-    AlgType zero_win{3, 0.};
+    AlgType zero_win{std::nullopt, 3UZ, 0.0F};
     for (size_t i = 0; i < 4; ++i) {
         EXPECT_TRUE(zero_win.Access());
     }
@@ -92,7 +93,7 @@ TEST(EdgeCasesSlidingWindowTests, ZeroWinSizeTest) {
 }
 
 TEST(EdgeCasesSlidingWindowTests, InfWinSizeTest) {
-    AlgType inf_win{3, std::numeric_limits<float>::infinity()};
+    AlgType inf_win{std::nullopt, 3UZ, std::numeric_limits<float>::infinity()};
     EXPECT_TRUE(inf_win.Access());
     EXPECT_TRUE(inf_win.Access());
     EXPECT_TRUE(inf_win.Access());
@@ -107,14 +108,10 @@ TEST(EdgeCasesSlidingWindowTests, InfWinSizeTest) {
 }
 
 TEST(EdgeCasesSlidingWindowTests, NegWinSizeTest) {
-    EXPECT_DEBUG_DEATH(AlgType(3, -1), "");
+    EXPECT_DEBUG_DEATH(AlgType(std::nullopt, 3UZ, -1.0F), "");
 }
 
 TEST(EdgeCasesSlidingWindowTests, NANWinSizeTest) {
-    EXPECT_DEBUG_DEATH(AlgType(3, std::numeric_limits<float>::quiet_NaN()), "");
-    EXPECT_DEBUG_DEATH(AlgType(3, std::numeric_limits<float>::signaling_NaN()), "");
+    EXPECT_DEBUG_DEATH(AlgType(std::nullopt, 3UZ, std::numeric_limits<float>::quiet_NaN()), "");
+    EXPECT_DEBUG_DEATH(AlgType(std::nullopt, 3UZ, std::numeric_limits<float>::signaling_NaN()), "");
 }
-
-
-
-
