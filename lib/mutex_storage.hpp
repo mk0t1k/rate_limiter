@@ -21,22 +21,49 @@
 
 namespace avito_limiter {
 
+namespace impl {
+
+struct EmptyMutex {};
+
+template<bool>
+struct MutexLock {
+  MutexLock(EmptyMutex) {}
+};
+
+template<>
+struct MutexLock<true> {
+  std::lock_guard<std::mutex> lk;
+
+  MutexLock(std::mutex& mtx) : lk{mtx} {}
+};
+
+template<bool>
+struct MutexWrapper {
+  EmptyMutex mtx;
+};
+
+template<>
+struct MutexWrapper<true> {
+  mutable std::mutex mtx;
+};
+} // namespace impl
+
 template<
   template<typename, typename> typename Alg, typename KeyType,
-  typename Clock = std::chrono::steady_clock
+  typename Clock = std::chrono::steady_clock, typename MutexPerKey = std::true_type
 >
 requires requirements::RateLimiterLogic<StoredData<Alg, Clock>>
 class MutexStorage final {
   using stored_data_t = StoredData<Alg, Clock>;
   using time_point_t = decltype(Clock::now());
+  using lock_type = impl::MutexLock<MutexPerKey::value>;
 public:
   using lazy_counter_t = std::size_t;
   
   using time_offs_t = typename stored_data_t::value_type;
   using time_val_t = typename time_offs_t::value_type;
 private:
-  struct Data {
-    mutable std::mutex mtx;
+  struct Data : impl::MutexWrapper<MutexPerKey::value> {
     StoredData<Alg, Clock> rate_limiter;
 
     template<typename ... Types, std::size_t ... Nums>
@@ -66,7 +93,7 @@ private:
     bool ShouldClean() const noexcept {
       auto threshold = last_clean_ + dur_clean_;
       if(Clock::now() < 
-        std::chrono::duration_cast<typename Clock::duration>(threshold)) {
+        std::chrono::time_point_cast<typename Clock::duration>(threshold)) {
         return false;
       }
       if(!notified_.load()) {
@@ -159,10 +186,21 @@ public:
   auto Visit(this Self&& self, const KeyType& key, Func&& func, 
     Args&&... args) -> std::variant<std::false_type, 
     std::invoke_result_t<Func, stored_data_t&, Args...>> {
-    std::shared_lock main_lock(self.main_mutex_);
+    using self_type = decltype(self);
+    using raw_self_type = std::remove_reference_t<self_type>;
+    if constexpr (!std::is_const_v<raw_self_type>) {
+      if(self.lazy_state_ && self.lazy_state_.value().ShouldClean()) {
+        std::unique_lock ul(self.main_mutex_);
+        self.DoCleanup();
+        self.lazy_state_.value().Update();
+      }
+    }
+    using main_lk_type = std::conditional_t<MutexPerKey::value, 
+      std::shared_lock<std::shared_mutex>, std::unique_lock<std::shared_mutex>>;
+    main_lk_type main_lock(self.main_mutex_);
     auto it = self.keys_.find(key);
     if(it != self.keys_.end()) {
-      std::lock_guard lock(it->second.mtx);
+      lock_type lock(it->second.mtx);
       return std::forward<Func>(func)(it->second.rate_limiter, std::forward<Args>(args)...);
     }
     return std::false_type{};
