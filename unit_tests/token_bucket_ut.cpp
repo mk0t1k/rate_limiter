@@ -12,7 +12,7 @@ namespace al = avito_limiter;
 
 using namespace std::chrono_literals;
 
-using AlgType = al::TokenBucketAlgo<MockClock>;
+using AlgType =  al::StoredData<al::TokenBucketAlgo, MockClock>;
 
 class TokenBucketTests : public ::testing::Test {
 protected:
@@ -22,11 +22,11 @@ protected:
     }
 
     TokenBucketTests() : 
-        algo(std::make_unique<AlgType>(1., 3)),
-        algo_with_ttl(std::make_unique<AlgType>(10., 10, 10)) {}
+        algo(std::make_unique<AlgType>(std::nullopt, 3UZ, 1.0F)),
+        algo_with_ttl(std::make_unique<AlgType>(10.0, 10UZ, 10.0F)) {}
     
-    std::unique_ptr<al::AlgBase<AlgType, MockClock>> algo;
-    std::unique_ptr<al::AlgBase<AlgType, MockClock>> algo_with_ttl;
+    std::unique_ptr<AlgType> algo;
+    std::unique_ptr<AlgType> algo_with_ttl;
 };
 
 TEST_F(TokenBucketTests, InitialStateTest) {
@@ -77,12 +77,12 @@ TEST_F(TokenBucketTests, TtlBoundsTest) {
 
 
 TEST(TokenBucketEdgeCasesTests, ZeroCapacity) {
-    AlgType zero_cap{1., 0};
+    AlgType zero_cap{std::nullopt, 0UZ, 1.0F};
     EXPECT_FALSE(zero_cap.Access());
 }
 
 TEST(TokenBucketEdgeCasesTests, ZeroRefill) {
-    AlgType zero_refill{0., 2};
+    AlgType zero_refill{std::nullopt, 2UZ, 0.0F};
     EXPECT_TRUE(zero_refill.Access());
     EXPECT_TRUE(zero_refill.Access());
     EXPECT_FALSE(zero_refill.Access());
@@ -92,7 +92,7 @@ TEST(TokenBucketEdgeCasesTests, ZeroRefill) {
 }
 
 TEST(TokenBucketEdgeCasesTests, InfinityRefillTest) {
-    AlgType inf_refill{std::numeric_limits<float>::infinity(), 2};
+    AlgType inf_refill{std::nullopt, 2UZ, std::numeric_limits<float>::infinity()};
     for (size_t i = 0; i < 10; ++i) {
         EXPECT_TRUE(inf_refill.Access());
     }
@@ -100,7 +100,7 @@ TEST(TokenBucketEdgeCasesTests, InfinityRefillTest) {
 }
 
 TEST(TokenBucketEdgeCasesTests, NegativeRefillTest) {
-    AlgType neg_refill{-1, 2};
+    AlgType neg_refill{std::nullopt, 2UZ, -1.0F};
     MockClock::advance(2s);
     EXPECT_FALSE(neg_refill.Access());
     MockClock::advance(2s);
@@ -110,6 +110,8 @@ TEST(TokenBucketEdgeCasesTests, NegativeRefillTest) {
 }
 
 TEST(TokenBucketEdgeCasesTests, NanRefillTest) {
-    EXPECT_DEBUG_DEATH(AlgType(std::numeric_limits<float>::quiet_NaN(), 2), "");
-    EXPECT_DEBUG_DEATH(AlgType(std::numeric_limits<float>::signaling_NaN(), 2), "");
+    EXPECT_DEBUG_DEATH(AlgType(std::nullopt, 
+        2UZ, std::numeric_limits<float>::quiet_NaN()), "");
+    EXPECT_DEBUG_DEATH(AlgType(std::nullopt, 
+        2UZ, std::numeric_limits<float>::signaling_NaN()), "");
 }
