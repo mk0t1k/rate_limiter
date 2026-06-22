@@ -11,7 +11,7 @@ template<
   template<typename, typename> typename Base, 
   typename Clock = std::chrono::steady_clock
 >
-class StoredData final: public Base<StoredData<Base>, Clock> {
+class StoredData final: public Base<StoredData<Base, Clock>, Clock> {
 public:
   using clock_type = Clock;
   using TtlValue_t = TtlValue<clock_type>;

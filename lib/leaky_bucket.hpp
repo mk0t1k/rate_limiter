@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <shared_mutex>
 #include <optional>
@@ -10,10 +11,10 @@
 
 namespace avito_limiter {
 
-class LeakyBucket final : public IRateShaper {
+class LeakyBucketShaper final : public IRateShaper {
   struct QueueValue {
-    std::promise<bool> prom;
     key_type key;
+    std::promise<bool> prom;
   };
 
   struct Config {
@@ -23,19 +24,22 @@ class LeakyBucket final : public IRateShaper {
   };
 
   std::queue<QueueValue> queue_;
-  std::shared_mutex mtx_;
+  mutable std::shared_mutex mtx_;
   Config conf_;
+  std::atomic_bool run_queue_thread_;
   std::thread queue_update_;
 
   void UpdateQueue();
 
+  void RunQueueThread();
+
 public:
-  LeakyBucket(std::size_t capacity, std::size_t cnt_remove, double wake_up_sec);
+  LeakyBucketShaper(std::size_t capacity, std::size_t cnt_remove, double wake_up_sec);
 
   std::optional<future_type> AddRequest(const key_type& key) override;
 
   std::size_t GetNumAvail() const noexcept override;
 
-  ~LeakyBucket();
+  ~LeakyBucketShaper();
 };
 } // namespace avito_limiter
