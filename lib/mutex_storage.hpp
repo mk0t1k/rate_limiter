@@ -117,6 +117,7 @@ private:
   std::optional<std::thread> cleaner_thread_;
   std::optional<std::atomic_bool> cleaner_run_;
   std::optional<LazyState> lazy_state_;
+  time_offs_t key_ttl_;
 
   void DoCleanup() {
     auto curr_it = keys_.begin();
@@ -155,6 +156,8 @@ public:
 
   MutexStorage() = default;
 
+  explicit MutexStorage(time_offs_t key_ttl) : key_ttl_{key_ttl} {}
+
   template<std::input_iterator InputIt, typename Sentinel>
   MutexStorage(InputIt begin, Sentinel end, 
     time_offs_t key_prolong = std::nullopt, 
@@ -181,6 +184,25 @@ public:
   MutexStorage(const MutexStorage& other) = delete;
 
   MutexStorage& operator=(const MutexStorage& other) = delete;
+
+  void SetKeyTtl(time_offs_t ttl_val) {
+    key_ttl_ = ttl_val;
+  }
+
+  template<typename ... Types>
+  bool Emplace(time_offs_t key_ttl, const KeyType& key, 
+    const std::tuple<Types...>& alg_args) {
+    std::unique_lock lk(main_mutex_);
+    auto res = keys_.try_emplace(key, key_ttl, alg_args);
+    return res.second;
+  }
+
+  template<typename ... Types>
+  bool Emplace(const KeyType& key, const std::tuple<Types...>& alg_args) {
+    std::unique_lock lk(main_mutex_);
+    auto res = keys_.try_emplace(key, key_ttl_, alg_args);
+    return res.second;
+  }
 
   template<typename Self, typename Func, typename ... Args>
   auto Visit(this Self&& self, const KeyType& key, Func&& func, 

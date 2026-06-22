@@ -3,11 +3,11 @@
 #include <cstddef>
 
 #include <type_traits>
+#include <utility>
 
 #include "interface.hpp"
 #include "meta.hpp"
 #include "mutex_storage.hpp"
-#include "sharded_storage.hpp"
 #include "sliding_win_log.hpp"
 #include "token_bucket.hpp"
 
@@ -19,9 +19,15 @@ using MutexTokenLimiter =
 using MutexWinLimiter = 
   RateLimiterWrapper<MutexStorage, SlidingWindowAlgo, key_type>;
 
-//template<std::size_t ShardCapacity, bool OptAlign>
-//using ShardedWinLimiter = 
-//  RateLimiterWrapper<ShardedStorage, SlidingWindowAlgo<>, 
-//  std::integral_constant<std::size_t, ShardCapacity>, 
-//  std::integral_constant<bool, OptAlign>, key_type>;
+template<std::size_t ShardCapacity, bool OptAlign>
+using ShardedWinLimiter = 
+  ShardedWrapper<
+    MutexWinLimiter, key_type, ShardCapacity, 
+    std::hash<key_type>, OptAlign>;
+
+template<std::size_t ShardCapacity, bool OptAlign>
+using ShardedTokenLimiter = 
+  ShardedWrapper<
+    MutexTokenLimiter, key_type, ShardCapacity, 
+    std::hash<key_type>, OptAlign>;
 } // namespace avito_limiter
