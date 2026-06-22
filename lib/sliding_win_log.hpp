@@ -11,14 +11,11 @@
 
 namespace avito_limiter {
 
-template <typename Clock = std::chrono::steady_clock>
-class SlidingWindowAlgo final : public AlgBase<SlidingWindowAlgo<Clock>, Clock> {
+template <typename Derived, typename Clock>
+class SlidingWindowAlgo {
 public:
   using clock_type = Clock;
 private:
-  using AlgBase_t = AlgBase<SlidingWindowAlgo<Clock>, Clock>;
-  using TtlValue_t = TtlValue<Clock>;
-
   using time_point = decltype(clock_type::now());
   using duration_type = typename clock_type::duration;
 
@@ -39,14 +36,17 @@ private:
     }
   }
 public:
-  using time_val_t = typename AlgBase_t::value_type;
 
   SlidingWindowAlgo() = default;
 
-  SlidingWindowAlgo(std::size_t capacity, float dur_sec, time_val_t ttl_val = TtlValue_t::kNoTtl) : 
-    AlgBase_t{ttl_val}, capacity_{capacity}, time_offs_sec_{dur_sec} {}
+  SlidingWindowAlgo(std::size_t capacity, float dur_sec) : 
+    capacity_{capacity}, time_offs_sec_{dur_sec} {}
 
-  bool Verify() {
+  bool Access() {
+    if(static_cast<Derived*>(this)->IsExpired()) {
+      return false;
+    }
+    static_cast<Derived*>(this)->Prolong();
     Update();
     if(accesses_.size() == capacity_) {
       return false;
@@ -55,7 +55,10 @@ public:
     return true;
   }
 
-  std::size_t GetAvail() const noexcept {
+  std::size_t GetNumAvail() const noexcept {
+    if(static_cast<const Derived*>(this)->IsExpired()) {
+      return 0Z;
+    }
     Update();
     return static_cast<std::size_t>(capacity_ - accesses_.size());
   }

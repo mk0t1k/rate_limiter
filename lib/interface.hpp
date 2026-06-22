@@ -2,8 +2,11 @@
 
 #include <cstddef>
 
+#include <future>
 #include <mutex>
+#include <optional>
 #include <string>
+#include <thread>
 #include <variant>
 
 namespace avito_limiter {
@@ -12,12 +15,25 @@ using key_type = std::string;
 
 class IRateLimiter {
 public:
+  virtual bool Exists(const key_type& key) const noexcept = 0;
+
   virtual bool Access(const key_type& key) = 0;
 
   virtual std::size_t GetNumAvail(
     const key_type& key) const noexcept = 0;
 
   virtual ~IRateLimiter() = default;
+};
+
+class IRateShaper {
+public:
+  using future_type = std::future<bool>;
+
+  virtual std::optional<future_type> AddRequest(const key_type& key) = 0;
+
+  virtual std::size_t GetNumAvail() const noexcept = 0;
+
+  virtual ~IRateShaper() = default;
 };
 
 namespace requirements {
@@ -35,11 +51,11 @@ concept RateLimiter = requires(T a, const T b, key_type key) {
   {b.GetNumAvail(key)} noexcept -> std::convertible_to<std::size_t>;
 };
 
-template<typename C, typename A>
+template<typename C>
 concept Storage = requires(C a, const C b, key_type k) {
   std::is_default_constructible_v<C>;
-  a.Visit(k, [](A&) -> int {return 0;});
-  b.Visit(k, [](const A&) -> int {return 0;});
+  a.Visit(k, [](auto&&) -> int {return 0;});
+  b.Visit(k, [](auto&&) -> int {return 0;});
 };
 
 template<typename T>
@@ -50,19 +66,27 @@ concept PolyRateLimiter = requires() {
 } // namespace requirements
 
 template<
-  template<requirements::RateLimiterLogic, typename ...> typename Container, 
-  requirements::RateLimiterLogic Alg, 
+  template<template<typename, typename> typename, typename ...> typename Container, 
+  template<typename, typename> typename Alg, 
   typename ... Aargs
 >
-requires requirements::Storage<Container<Alg, Aargs...>, Alg>
+requires requirements::Storage<Container<Alg, Aargs...>>
 class RateLimiterWrapper final : public IRateLimiter {
   Container<Alg, Aargs...> storage_;
 public:
   template<typename ... Args>
   RateLimiterWrapper(Args&&... args) : storage_{std::forward<Args>(args)...} {}
 
+  bool Exists(const key_type& key) const noexcept override { 
+    auto res = storage_.Visit(key, [](auto&& alg) { return 0; });
+    if(std::holds_alternative<std::false_type>(res)) {
+      return false;
+    }
+    return true;
+  }
+
   bool Access(const key_type& key) {
-    auto res = storage_.Visit(key, [](Alg& alg) {return alg.Access();});
+    auto res = storage_.Visit(key, [](auto&& alg) {return alg.Access();});
     if(std::holds_alternative<std::false_type>(res)) {
       return false;
     }
@@ -70,7 +94,7 @@ public:
   }
 
   std::size_t GetNumAvail(const key_type& key) const noexcept {
-    auto res = storage_.Visit(key, [](const Alg& alg) {return alg.GetNumAvail();});
+    auto res = storage_.Visit(key, [](auto&& alg) {return alg.GetNumAvail();});
     if(std::holds_alternative<std::false_type>(res)) {
       return 0UZ;
     }

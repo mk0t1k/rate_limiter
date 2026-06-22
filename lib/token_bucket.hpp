@@ -15,14 +15,11 @@ namespace {
   constexpr float kTokBuckUnitPos = 1.0F - kTokBuckEpsilon;
 } // namespace
 
-template <typename Clock = std::chrono::steady_clock>
-class TokenBucketAlgo final: public AlgBase<TokenBucketAlgo<Clock>, Clock> {
+template <typename Derived, typename Clock>
+class TokenBucketAlgo {
 public:
   using clock_type = Clock;
 private:
-  using TtlValue_t = TtlValue<Clock>; 
-  using AlgBase_t = AlgBase<TokenBucketAlgo<Clock>, Clock>;
-
   using time_point = decltype(clock_type::now());
 
   mutable time_point last_access_;
@@ -39,12 +36,9 @@ private:
   }
 
 public:
-  using time_val_t = typename AlgBase_t::value_type;
-
   TokenBucketAlgo() : last_access_{clock_type::now()} {}
   
-  TokenBucketAlgo(float v_refill, std::size_t capacity, time_val_t ttl_val=TtlValue_t::kNoTtl) : 
-    AlgBase_t{ttl_val},
+  TokenBucketAlgo(std::size_t capacity, float v_refill) :
     last_access_{clock_type::now()}, 
     refill_tok_sec_{v_refill} 
     {
@@ -52,7 +46,11 @@ public:
       curr_tok_ = capacity_;
     }
 
-  bool Verify() noexcept {
+  bool Access() noexcept {
+    if(static_cast<Derived*>(this)->IsExpired()) {
+      return false;
+    }
+    static_cast<Derived*>(this)->Prolong();
     Update();
     if(curr_tok_ >= kTokBuckUnitPos) {
       curr_tok_ -= 1.0F;
@@ -61,7 +59,10 @@ public:
     return false;
   }
 
-  std::size_t GetAvail() const noexcept {
+  std::size_t GetNumAvail() const noexcept {
+    if(static_cast<const Derived*>(this)->IsExpired()) {
+      return 0Z;
+    }
     Update();
     return static_cast<std::size_t>(curr_tok_);
   }
