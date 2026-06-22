@@ -2,6 +2,7 @@
 
 #include <chrono>
 
+
 struct MockClock {
     using duration = std::chrono::nanoseconds;
     using rep = duration::rep;

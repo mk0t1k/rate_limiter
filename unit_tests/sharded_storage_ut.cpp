@@ -1,21 +1,20 @@
-
 #include <cstddef>
 #include <new>
 #include <thread>
 #include <type_traits>
+#include <vector>
 
 #include <gtest/gtest.h>
 
 #include "lib/interface.hpp"
 #include "lib/sliding_win_log.hpp"
 #include <lib/sharded_storage.hpp>
-#include <vector>
 
 #include "mock_clock.hpp"
 
 namespace al = avito_limiter;
 
-using Alg = al::SlidingWindowAlgo<MockClock>;
+using Alg = al::StoredData<al::SlidingWindowAlgo, MockClock>;
 
 struct TrackingAlg {
     static inline int alive = 0;
@@ -42,7 +41,7 @@ protected:
     ShardedStorageTests() : 
         cont(keys.begin(), keys.end(), alg) {}
     
-    Alg alg{3U, 4.0F, 3.0};
+    Alg alg{3.0, 3U, 4.0F}; 
     std::vector<al::key_type> keys = {"a", "b", "c", "d", "e", "f", "g"};
     al::ShardedStorage<
         Alg, 

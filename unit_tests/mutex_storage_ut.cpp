@@ -1,8 +1,9 @@
-
 #include <cstddef>
 #include <new>
 #include <thread>
 #include <type_traits>
+#include <vector>
+#include <tuple>
 
 #include <gtest/gtest.h>
 
@@ -10,13 +11,10 @@
 #include "lib/mutex_storage.hpp"
 #include "lib/sliding_win_log.hpp"
 #include <lib/sharded_storage.hpp>
-#include <vector>
 
 #include "mock_clock.hpp"
 
 namespace al = avito_limiter;
-
-using Alg = al::SlidingWindowAlgo<MockClock>;
 
 class MutexStorageTests : public ::testing::Test {
 protected:
@@ -26,13 +24,14 @@ protected:
     }
 
     MutexStorageTests() : 
-        cont(keys.begin(), keys.end(), alg) {}
+        cont(keys.begin(), keys.end(), std::make_tuple(3U, 4.0F), 3.0) {}
     
-    Alg alg{3U, 4.0F, 3.0};
     std::vector<al::key_type> keys = {"a", "b", "c", "d", "e", "f", "g"};
+    
     al::MutexStorage<
-        Alg, 
-        avito_limiter::key_type
+        al::SlidingWindowAlgo, 
+        avito_limiter::key_type,
+        MockClock
     > cont;
 };
 
@@ -49,7 +48,7 @@ TEST_F(MutexStorageTests, ConcurrencyTest) {
     for (size_t t = 0; t < num_threads; ++t) {
         ths.emplace_back([&]() { 
             for (size_t i = 0; i < iterations_per_thread; ++i) {
-                auto res = cont.Visit(target_key, [](Alg& algo) {
+                auto res = cont.Visit(target_key, [](auto& algo) {
                     return algo.Access();    
                 });
                 
@@ -64,4 +63,3 @@ TEST_F(MutexStorageTests, ConcurrencyTest) {
 
     EXPECT_EQ(success_count.load(), 3);
 }
-
