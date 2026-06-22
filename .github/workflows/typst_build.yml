@@ -1,0 +1,28 @@
+name: Build Typst PDF
+
+on:
+  push:
+    paths:
+      - 'report/report.typ'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Typst
+        uses: typst-community/setup-typst@v3
+
+      - name: Compile Typst report
+        run: typst compile report/report.typ 
+
+      - name: Commit PDF back to repo
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "${{ github.event.head_commit.message }} pdf"
+          file_pattern: 'report/report.pdf'
