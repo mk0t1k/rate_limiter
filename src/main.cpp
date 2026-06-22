@@ -1,9 +1,9 @@
-#include "lib/limiters.hpp"
+#include "lib/algorithms/limiters.hpp"
 #include "lib/mutex_storage.hpp"
 #include "lib/meta.hpp"
 #include "lib/ttl.hpp"
-#include "lib/sliding_win_log.hpp"
-#include "lib/leaky_bucket.hpp"
+#include "lib/algorithms/sliding_win_log.hpp"
+#include "lib/algorithms/leaky_bucket.hpp"
 
 #include <cassert>
 #include <iostream>
