@@ -22,57 +22,57 @@ protected:
     }
 
     TokenBucketTests() : 
-        algo(std::make_unique<AlgType>(1., 3)),
-        algo_with_ttl(std::make_unique<AlgType>(10., 10, 10)) {}
+        algo(1., 3),
+        algo_with_ttl(10., 10, 10) {}
     
-    std::unique_ptr<al::AlgBase<AlgType, MockClock>> algo;
-    std::unique_ptr<al::AlgBase<AlgType, MockClock>> algo_with_ttl;
+    AlgType algo;
+    AlgType algo_with_ttl;
 };
 
 TEST_F(TokenBucketTests, InitialStateTest) {
-    EXPECT_EQ(algo->GetNumAvail(), 3);
+    EXPECT_EQ(algo.GetNumAvail(), 3);
 }
 
 TEST_F(TokenBucketTests, LackOfTokensTest) {
-    EXPECT_TRUE(algo->Access());
-    EXPECT_TRUE(algo->Access());
-    EXPECT_TRUE(algo->Access());
-    EXPECT_FALSE(algo->Access());
+    EXPECT_TRUE(algo.Access());
+    EXPECT_TRUE(algo.Access());
+    EXPECT_TRUE(algo.Access());
+    EXPECT_FALSE(algo.Access());
 }
 
 TEST_F(TokenBucketTests, TokensRefillTest) {
-    EXPECT_TRUE(algo->Access());
-    EXPECT_TRUE(algo->Access());
-    EXPECT_TRUE(algo->Access());
+    EXPECT_TRUE(algo.Access());
+    EXPECT_TRUE(algo.Access());
+    EXPECT_TRUE(algo.Access());
 
     MockClock::advance(999ms);
-    EXPECT_FALSE(algo->Access());
+    EXPECT_FALSE(algo.Access());
 
     MockClock::advance(1ms);
-    EXPECT_TRUE(algo->Access());
-    EXPECT_FALSE(algo->Access());
+    EXPECT_TRUE(algo.Access());
+    EXPECT_FALSE(algo.Access());
 }
 
 TEST_F(TokenBucketTests, ExcedingTokenLimitTest) {
-    EXPECT_TRUE(algo->Access());
-    EXPECT_TRUE(algo->Access());
-    EXPECT_TRUE(algo->Access());
+    EXPECT_TRUE(algo.Access());
+    EXPECT_TRUE(algo.Access());
+    EXPECT_TRUE(algo.Access());
     MockClock::advance(10s);
-    EXPECT_EQ(algo->GetNumAvail(), 3);
+    EXPECT_EQ(algo.GetNumAvail(), 3);
 }
 
 
 TEST_F(TokenBucketTests, TtlBoundsTest) {
-    EXPECT_TRUE(algo_with_ttl->Access());
+    EXPECT_TRUE(algo_with_ttl.Access());
     
     MockClock::advance(9999ms);
-    EXPECT_TRUE(algo_with_ttl->Access());
+    EXPECT_TRUE(algo_with_ttl.Access());
 
     MockClock::advance(2ms);
-    EXPECT_TRUE(algo_with_ttl->Access());
+    EXPECT_TRUE(algo_with_ttl.Access());
 
     MockClock::advance(10001ms);
-    EXPECT_FALSE(algo_with_ttl->Access());
+    EXPECT_FALSE(algo_with_ttl.Access());
 }
 
 
