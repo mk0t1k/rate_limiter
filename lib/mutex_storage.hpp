@@ -14,7 +14,7 @@
 #include <utility>
 #include <variant>
 
-#include "alg_base.hpp"
+#include "algorithms/alg_base.hpp"
 #include "interface.hpp"
 #include "meta.hpp"
 #include "ttl.hpp"

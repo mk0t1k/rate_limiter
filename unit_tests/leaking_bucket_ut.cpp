@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <lib/leaky_bucket.hpp>
+#include <lib/algorithms/leaky_bucket.hpp>
 
 TEST(LeakingBucketTests, None) {
     
