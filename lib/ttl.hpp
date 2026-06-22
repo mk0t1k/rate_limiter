@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <compare>
+#include <optional>
 
 namespace avito_limiter {
 
@@ -13,9 +14,7 @@ public:
   using offset_type = double;
 private:
 
-  bool is_infinite_ = true;
-  offset_type ttl_sec_;
-  time_point time_created_;
+  std::optional<time_point> expire_time_;
 
 public:
   using value_type = std::optional<offset_type>;
@@ -28,26 +27,25 @@ public:
   }
 
   void Set(value_type time_sec) noexcept {
-    time_created_ = clock_type::now();
     if(time_sec) {
-      ttl_sec_ = time_sec.value();
-      is_infinite_ = false;    
+      auto res = clock_type::now() + std::chrono::duration<offset_type>{
+        time_sec.value()};
+      expire_time_ = std::chrono::time_point_cast<typename clock_type::duration>(
+              res);  
     } else {
-      is_infinite_ = true;
+      expire_time_ = std::nullopt;
     }
   }
 
   time_point ExpireTime() const noexcept {
-    auto res = time_created_ + std::chrono::duration<offset_type>{ttl_sec_};
-    time_point target_time = 
-          std::chrono::time_point_cast<typename clock_type::duration>(
-              res
-          );
-    return target_time;
+    if(expire_time_) {
+      return expire_time_.value();
+    }
+    return clock_type::now();
   }
 
   value_type GetTtl() noexcept {
-    if(is_infinite_) {
+    if(!static_cast<bool>(expire_time_)) {
       return std::nullopt;
     }
     auto dur = ExpireTime() - clock_type::now();
@@ -57,27 +55,31 @@ public:
   }
 
   operator bool() const noexcept {
-    return is_infinite_ || clock_type::now() <= ExpireTime();
+    return !static_cast<bool>(expire_time_) || clock_type::now() <= ExpireTime();
   }
 
   bool operator==(const TtlValue& other) const {
-    if(is_infinite_ && other.is_infinite_) {
+    bool is_infinite = !static_cast<bool>(expire_time_);
+    bool is_other_infinite = !static_cast<bool>(other.expire_time_);
+    if(is_infinite && is_other_infinite) {
       return true;
     }
-    if(is_infinite_ || other.is_infinite_) {
+    if(is_infinite || is_other_infinite) {
       return false;
     }
     return ExpireTime() == other.ExpireTime();
   }
 
   std::weak_ordering operator<=>(const TtlValue& other) const {
-    if(is_infinite_ && other.is_infinite_) {
+    bool is_infinite = !static_cast<bool>(expire_time_);
+    bool is_other_infinite = !static_cast<bool>(other.expire_time_);
+    if(is_infinite && is_other_infinite) {
       return std::weak_ordering::equivalent;
     }
-    if(is_infinite_) {
+    if(is_infinite) {
       return std::weak_ordering::greater;
     }
-    if(other.is_infinite_) {
+    if(is_other_infinite) {
       return std::weak_ordering::less;
     }
     return ExpireTime() <=> other.ExpireTime();

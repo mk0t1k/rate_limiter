@@ -7,38 +7,33 @@
 
 namespace avito_limiter {
 
-template<typename Derived, typename Clock = std::chrono::steady_clock>
-class AlgBase {
+template<
+  template<typename, typename> typename Base, 
+  typename Clock = std::chrono::steady_clock
+>
+class StoredData final: public Base<StoredData<Base>, Clock> {
 public:
-  using TtlValue_t = TtlValue<Clock>;
+  using clock_type = Clock;
+  using TtlValue_t = TtlValue<clock_type>;
   using value_type = typename TtlValue_t::value_type;
 private:
   mutable TtlValue_t ttl_;
   value_type prolong_sec_;
-protected:
-
-  AlgBase() = default;
-
-  AlgBase(value_type val): ttl_{val}, prolong_sec_{val} {}
 
 public:
+  StoredData() = default;
+
+  template<typename ... Args>
+  StoredData(value_type val, Args&&... args): 
+    Base<StoredData, Clock>{std::forward<Args>(args)...}, ttl_{val}, 
+    prolong_sec_{val} {}
+
   bool IsExpired() const noexcept {
     return !static_cast<bool>(ttl_);
   }
 
-  bool Access() noexcept {
-    if(IsExpired()) {
-      return false;
-    }
+  void Prolong() const noexcept {
     ttl_.Set(prolong_sec_);
-    return static_cast<Derived*>(this)->Verify();
-  }
-
-  std::size_t GetNumAvail() const noexcept {
-    if(IsExpired()) {
-      return 0Z;
-    }
-    return static_cast<const Derived*>(this)->GetAvail();
   }
 };
 } // namespace avito_limiter
