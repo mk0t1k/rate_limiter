@@ -21,6 +21,8 @@ add_executable(
   sliding_win_log_ut.cpp
   leaking_bucket_ut.cpp
   ttl_ut.cpp
+  sharded_storage_ut.cpp
+  mutex_storage_ut.cpp
 )
 
 include(GoogleTest)

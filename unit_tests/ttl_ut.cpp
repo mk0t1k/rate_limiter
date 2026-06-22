@@ -92,37 +92,40 @@ TEST_F(TtlTests, CmpTest) {
 }
 
 TEST(EdgeCasesTests, ZeroTtl) {
+    MockClock::reset();
+
     al::TtlValue<MockClock> zero_ttl {0};
     
     EXPECT_TRUE(static_cast<bool>(zero_ttl));
     EXPECT_DOUBLE_EQ(*zero_ttl.GetTtl(), 0);
 
     MockClock::advance(1ns);
-
     EXPECT_FALSE(static_cast<bool>(zero_ttl));
 }
 
 TEST(EdgeCasesTests, InfTtl) {
+    MockClock::reset();
+
     al::TtlValue<MockClock> inf_ttl {std::numeric_limits<double>::infinity()};
-    
     EXPECT_TRUE(static_cast<bool>(inf_ttl));
 
     MockClock::advance(24h * 365 * 10);
-
     EXPECT_TRUE(static_cast<bool>(inf_ttl));
 }
 
 TEST(EdgeCasesTests, NegTtl) {
+    MockClock::reset();
+
     al::TtlValue<MockClock> neg_ttl {-1};
-    
     EXPECT_FALSE(static_cast<bool>(neg_ttl));
 
     MockClock::advance(24h * 365 * 10);
-
     EXPECT_FALSE(static_cast<bool>(neg_ttl));
 }
 
 TEST(EdgeCasesTests, NanTtl) {
+    MockClock::reset();
+    
     EXPECT_DEBUG_DEATH(al::TtlValue<MockClock>(std::optional(std::numeric_limits<double>::quiet_NaN())), "");
     EXPECT_DEBUG_DEATH(al::TtlValue<MockClock>(std::optional(std::numeric_limits<double>::signaling_NaN())), "");
 }

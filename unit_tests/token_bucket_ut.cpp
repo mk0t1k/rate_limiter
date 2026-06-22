@@ -82,6 +82,8 @@ TEST(TokenBucketEdgeCasesTests, ZeroCapacity) {
 }
 
 TEST(TokenBucketEdgeCasesTests, ZeroRefill) {
+    MockClock::reset();
+
     AlgType zero_refill{0., 2};
     EXPECT_TRUE(zero_refill.Access());
     EXPECT_TRUE(zero_refill.Access());
@@ -92,6 +94,8 @@ TEST(TokenBucketEdgeCasesTests, ZeroRefill) {
 }
 
 TEST(TokenBucketEdgeCasesTests, InfinityRefillTest) {
+    MockClock::reset();
+
     AlgType inf_refill{std::numeric_limits<float>::infinity(), 2};
     for (size_t i = 0; i < 10; ++i) {
         EXPECT_TRUE(inf_refill.Access());
@@ -100,6 +104,8 @@ TEST(TokenBucketEdgeCasesTests, InfinityRefillTest) {
 }
 
 TEST(TokenBucketEdgeCasesTests, NegativeRefillTest) {
+    MockClock::reset();
+
     AlgType neg_refill{-1, 2};
     MockClock::advance(2s);
     EXPECT_FALSE(neg_refill.Access());
@@ -110,6 +116,8 @@ TEST(TokenBucketEdgeCasesTests, NegativeRefillTest) {
 }
 
 TEST(TokenBucketEdgeCasesTests, NanRefillTest) {
+    MockClock::reset();
+    
     EXPECT_DEBUG_DEATH(AlgType(std::numeric_limits<float>::quiet_NaN(), 2), "");
     EXPECT_DEBUG_DEATH(AlgType(std::numeric_limits<float>::signaling_NaN(), 2), "");
 }

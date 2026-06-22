@@ -77,6 +77,8 @@ TEST_F(SlidingWindowTests, TtlBoundsTest) {
 
 
 TEST(EdgeCasesSlidingWindowTests, ZeroCapTest) {
+    MockClock::reset();
+
     AlgType zero_cap{0, 1.};
     EXPECT_FALSE(zero_cap.Access());
     MockClock::advance(1000s);
@@ -84,6 +86,8 @@ TEST(EdgeCasesSlidingWindowTests, ZeroCapTest) {
 }
 
 TEST(EdgeCasesSlidingWindowTests, ZeroWinSizeTest) {
+    MockClock::reset();
+
     AlgType zero_win{3, 0.};
     for (size_t i = 0; i < 4; ++i) {
         EXPECT_TRUE(zero_win.Access());
@@ -92,6 +96,8 @@ TEST(EdgeCasesSlidingWindowTests, ZeroWinSizeTest) {
 }
 
 TEST(EdgeCasesSlidingWindowTests, InfWinSizeTest) {
+    MockClock::reset();
+
     AlgType inf_win{3, std::numeric_limits<float>::infinity()};
     EXPECT_TRUE(inf_win.Access());
     EXPECT_TRUE(inf_win.Access());
@@ -107,10 +113,14 @@ TEST(EdgeCasesSlidingWindowTests, InfWinSizeTest) {
 }
 
 TEST(EdgeCasesSlidingWindowTests, NegWinSizeTest) {
+    MockClock::reset();
+
     EXPECT_DEBUG_DEATH(AlgType(3, -1), "");
 }
 
 TEST(EdgeCasesSlidingWindowTests, NANWinSizeTest) {
+    MockClock::reset();
+    
     EXPECT_DEBUG_DEATH(AlgType(3, std::numeric_limits<float>::quiet_NaN()), "");
     EXPECT_DEBUG_DEATH(AlgType(3, std::numeric_limits<float>::signaling_NaN()), "");
 }
