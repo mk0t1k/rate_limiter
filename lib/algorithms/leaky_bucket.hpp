@@ -28,7 +28,8 @@ class LeakyBucketShaper final : public IRateShaper {
   mutable std::shared_mutex mtx_;
   std::condition_variable_any cva_;
   Config conf_;
-  bool force_trigger_;
+  bool force_trigger_ = false;
+  bool stop_flag_ = false;
   std::jthread queue_update_;
 
   void UpdateQueue();
@@ -44,6 +45,6 @@ public:
 
   std::size_t GetNumAvail() const noexcept override;
 
-  ~LeakyBucketShaper() = default;
+  ~LeakyBucketShaper();
 };
 } // namespace avito_limiter

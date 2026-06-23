@@ -17,13 +17,14 @@ void LeakyBucketShaper::UpdateQueue() {
 }
 
 void LeakyBucketShaper::RunQueueThread(std::stop_token stoken) {
-  while (true) {
+  while (!stoken.stop_requested()) {
     std::unique_lock ul(mtx_);
-    cva_.wait_for(ul, stoken, conf_.wakeup_dur, [this]{ return force_trigger_; });
+    cva_.wait_for(ul, conf_.wakeup_dur, [this]{ return force_trigger_ || stop_flag_; });
 
-    force_trigger_ = false;
-
-    if (stoken.stop_requested()) {
+    if(force_trigger_) {
+      force_trigger_ = false;
+    }
+    if(stop_flag_) {
       break;
     }
 
@@ -41,7 +42,6 @@ LeakyBucketShaper::LeakyBucketShaper(
   std::size_t capacity, std::size_t cnt_remove, double wake_up_sec) :
   conf_{.capacity=capacity, .cnt_remove_per_run=cnt_remove, 
     .wakeup_dur=std::chrono::duration<double>(wake_up_sec)},
-    force_trigger_(false),
   queue_update_{&LeakyBucketShaper::RunQueueThread, this} {}
 
 std::optional<LeakyBucketShaper::future_type> LeakyBucketShaper::AddRequest(
@@ -62,4 +62,9 @@ std::size_t LeakyBucketShaper::GetNumAvail() const noexcept {
   return conf_.capacity - queue_.size();
 }
 
+LeakyBucketShaper::~LeakyBucketShaper() {
+  std::unique_lock lock(mtx_);
+  stop_flag_ = true;
+  cva_.notify_one();
+}
 } // namespace avito_limiter

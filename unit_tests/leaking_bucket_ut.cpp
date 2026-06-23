@@ -90,25 +90,20 @@ TEST(LeakingBucketTests, AutoPeriodDraining) {
     EXPECT_TRUE(f1.get());
 }
 
-/*TEST(LeakingBucketTests, StressTest) {
-    for (size_t attempt = 0; attempt < 1000; ++attempt) {
-        al::LeakyBucketShaper shaper(3, 1, 0.001);
-
-        std::vector<std::jthread> ths;
-
-        size_t mx_ths = std::max(1u, std::thread::hardware_concurrency());
-
-        for (size_t i = 0; i < mx_ths; ++i) {
-            ths.emplace_back([&](){
-                for (int j = 0; j < 10000; ++j) {
-                    shaper.AddRequest(std::to_string(j));
-                }
-
-                EXPECT_TRUE(shaper.GetNumAvail() <= 3);
-            });
-        }
+TEST(LeakingBucketTests, ConcurrencyTest) {
+    al::LeakyBucketShaper shaper(3, 1, 0.001);
+    std::vector<std::jthread> ths;
+    size_t mx_ths = 4;
+    for (size_t i = 0; i < mx_ths; ++i) {
+        ths.emplace_back([=,&shaper](){
+            for (int j = 0; j < 2; ++j) {
+                std::this_thread::sleep_for(std::chrono::milliseconds{i * 2 + j * 2});
+                auto res = shaper.AddRequest(std::to_string(j));
+                EXPECT_TRUE(static_cast<bool>(res));
+            }
+        });
     }
-}*/
+}
 
 TEST(EdgeCasesLeakingBucketTests, ZeroCap) {
     al::LeakyBucketShaper shaper(0, 1, 100);
