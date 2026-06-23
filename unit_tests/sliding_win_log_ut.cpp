@@ -4,8 +4,8 @@
 #include <memory>
 #include <thread>
 
-#include "lib/alg_base.hpp"
-#include "lib/sliding_win_log.hpp"
+#include "lib/algorithms/alg_base.hpp"
+#include "lib/algorithms/sliding_win_log.hpp"
 #include "mock_clock.hpp"
 
 namespace al = avito_limiter;

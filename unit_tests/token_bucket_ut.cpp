@@ -5,7 +5,7 @@
 #include <memory>
 #include <thread>
 
-#include "lib/token_bucket.hpp"
+#include "lib/algorithms/token_bucket.hpp"
 #include "mock_clock.hpp"
 
 namespace al = avito_limiter;
