@@ -5,6 +5,7 @@
 #include <memory>
 #include <thread>
 
+#include "lib/algorithms/alg_base.hpp"
 #include "lib/algorithms/token_bucket.hpp"
 #include "mock_clock.hpp"
 

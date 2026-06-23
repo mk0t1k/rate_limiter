@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <shared_mutex>
@@ -9,7 +8,7 @@
 #include <stop_token>
 #include <thread>
 
-#include "../interface.hpp"
+#include "interface.hpp"
 
 namespace avito_limiter {
 
