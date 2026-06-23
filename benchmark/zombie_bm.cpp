@@ -1,23 +1,18 @@
 #include <benchmark/benchmark.h>
 
 #include <atomic>
-#include <random>
 #include <chrono>
+#include <mutex>
+#include <optional>
+#include <random>
+#include <string>
 #include <thread>
 #include <vector>
-#include <algorithm>
-#include <string>
-#include <optional>
 
+#include "common.hpp"
 #include "config.hpp"
 
 #include "algorithms/limiters.hpp"
-
-namespace {
-
-  constexpr size_t kLatencyCapacity = 10000;
-
-} // namespace
 
 template <class LimiterType>
 static void BM_Zombie_Traffic(benchmark::State& state) {
@@ -47,8 +42,15 @@ static void BM_Zombie_Traffic(benchmark::State& state) {
       "z_" + std::to_string(my_key_id);
   thread_local int req_count = 0;
 
+  static std::mutex s_mtx;
+  static std::vector<std::vector<double>> s_per_thread_lats;
+  static std::atomic<int> s_done{0};
+  bench::BeginLatencyCollection(state, s_mtx, s_per_thread_lats, s_done);
+
   std::vector<double> latencies;
-  latencies.reserve(kLatencyCapacity);
+  latencies.reserve(bench::kLatencyCapacity);
+
+  limiter.Emplace(cached_key);
 
   for (auto _ : state) {
 
@@ -76,16 +78,8 @@ static void BM_Zombie_Traffic(benchmark::State& state) {
     ++req_count;
   }
 
-  if (!latencies.empty()) {
-    std::sort(latencies.begin(), latencies.end());
-    double p50 = latencies[static_cast<std::size_t>(latencies.size() * 0.50)];
-    double p99 = latencies[static_cast<std::size_t>(latencies.size() * 0.99)];
-
-    state.counters["p50_ns"] =
-        benchmark::Counter(p50, benchmark::Counter::kAvgThreads);
-    state.counters["p99_ns"] =
-        benchmark::Counter(p99, benchmark::Counter::kAvgThreads);
-  }
+  bench::FinishLatencyCollection(state, s_mtx, s_per_thread_lats, s_done,
+                                 std::move(latencies));
 
   state.SetItemsProcessed(state.iterations());
 }

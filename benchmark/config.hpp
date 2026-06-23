@@ -23,8 +23,11 @@ namespace config {
   constexpr int kBurstInterReqUs = 100;
   constexpr double kBurstSleepSec = 1.0;
 
+  // --- Sparse + Burst ---
+  constexpr double kSparseBurstRatePerSec = 5.0;
+  constexpr double kSparseBurstProbability = 0.02;
+
   // --- Zombie ---
-  constexpr int kZombieKeysCount = 5000;
   constexpr int kZombieReqsPerKey = 2;
   constexpr double kZombieTargetRatePerSec = 5000.0;
 

@@ -1,40 +1,17 @@
 #include <benchmark/benchmark.h>
 
-#include <random>
+#include <atomic>
 #include <chrono>
+#include <mutex>
+#include <random>
+#include <string>
 #include <thread>
 #include <vector>
-#include <algorithm>
-#include <string>
 
+#include "common.hpp"
 #include "config.hpp"
 
 #include "algorithms/limiters.hpp"
-
-namespace {
-
-  constexpr size_t kLatencyCapacity = 10000;
-
-  std::vector<avito_limiter::key_type> CrossShardKeys() {
-    std::vector<avito_limiter::key_type> keys;
-    keys.reserve(config::kShardCapacity * 2);
-    for (std::size_t i = 0; i < config::kShardCapacity * 2; ++i) {
-      keys.push_back("k" + std::to_string(i));
-    }
-    return keys;
-  }
-
-  const avito_limiter::key_type& CrossShardKeyForThread(
-      const std::vector<avito_limiter::key_type>& keys,
-      int thread_index) {
-    const std::size_t key_index =
-        (thread_index % 2 == 0)
-            ? config::kCrossShardKeyLastInFirstShard
-            : config::kCrossShardKeyFirstInSecondShard;
-    return keys[key_index];
-  }
-
-} // namespace
 
 template <class LimiterType>
 static void BM_Burst_Traffic(benchmark::State& state) {
@@ -44,8 +21,13 @@ static void BM_Burst_Traffic(benchmark::State& state) {
       keys.begin(), keys.end(),
       std::tuple{config::kBurstCapacity, 1.0F}};
 
+  static std::mutex s_mtx;
+  static std::vector<std::vector<double>> s_per_thread_lats;
+  static std::atomic<int> s_done{0};
+  bench::BeginLatencyCollection(state, s_mtx, s_per_thread_lats, s_done);
+
   std::vector<double> latencies;
-  latencies.reserve(kLatencyCapacity);
+  latencies.reserve(bench::kLatencyCapacity);
 
   int burst_counter = 0;
 
@@ -74,16 +56,8 @@ static void BM_Burst_Traffic(benchmark::State& state) {
     ++burst_counter;
   }
 
-  if (!latencies.empty()) {
-    std::sort(latencies.begin(), latencies.end());
-    double p50 = latencies[static_cast<std::size_t>(latencies.size() * 0.50)];
-    double p99 = latencies[static_cast<std::size_t>(latencies.size() * 0.99)];
-
-    state.counters["p50_ns"] =
-        benchmark::Counter(p50, benchmark::Counter::kAvgThreads);
-    state.counters["p99_ns"] =
-        benchmark::Counter(p99, benchmark::Counter::kAvgThreads);
-  }
+  bench::FinishLatencyCollection(state, s_mtx, s_per_thread_lats, s_done,
+                                 std::move(latencies));
 
   state.SetItemsProcessed(state.iterations());
 }
@@ -91,16 +65,21 @@ static void BM_Burst_Traffic(benchmark::State& state) {
 template <class LimiterType>
 static void BM_Burst_CrossShard_Traffic(benchmark::State& state) {
 
-  static const std::vector<avito_limiter::key_type> keys = CrossShardKeys();
+  static const std::vector<avito_limiter::key_type> keys = bench::CrossShardKeys();
   static LimiterType limiter{
       keys.begin(), keys.end(),
       std::tuple{config::kBurstCapacity, 1.0F}};
 
   const avito_limiter::key_type& key =
-      CrossShardKeyForThread(keys, static_cast<int>(state.thread_index()));
+      bench::CrossShardKeyForThread(keys, static_cast<int>(state.thread_index()));
+
+  static std::mutex s_mtx_cs;
+  static std::vector<std::vector<double>> s_per_thread_lats_cs;
+  static std::atomic<int> s_done_cs{0};
+  bench::BeginLatencyCollection(state, s_mtx_cs, s_per_thread_lats_cs, s_done_cs);
 
   std::vector<double> latencies;
-  latencies.reserve(kLatencyCapacity);
+  latencies.reserve(bench::kLatencyCapacity);
 
   int burst_counter = 0;
 
@@ -129,16 +108,8 @@ static void BM_Burst_CrossShard_Traffic(benchmark::State& state) {
     ++burst_counter;
   }
 
-  if (!latencies.empty()) {
-    std::sort(latencies.begin(), latencies.end());
-    double p50 = latencies[static_cast<std::size_t>(latencies.size() * 0.50)];
-    double p99 = latencies[static_cast<std::size_t>(latencies.size() * 0.99)];
-
-    state.counters["p50_ns"] =
-        benchmark::Counter(p50, benchmark::Counter::kAvgThreads);
-    state.counters["p99_ns"] =
-        benchmark::Counter(p99, benchmark::Counter::kAvgThreads);
-  }
+  bench::FinishLatencyCollection(state, s_mtx_cs, s_per_thread_lats_cs, s_done_cs,
+                                 std::move(latencies));
 
   state.SetItemsProcessed(state.iterations());
 }
