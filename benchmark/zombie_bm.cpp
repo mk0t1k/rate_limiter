@@ -36,6 +36,7 @@ static void BM_Zombie_Traffic(benchmark::State& state) {
   static std::vector<avito_limiter::key_type> empty_keys;
   static LimiterType limiter{
       empty_keys.begin(), empty_keys.end(),
+      std::tuple{config::kBurstCapacity, 1.0F},
       std::optional<double>{5.0},
       std::optional<double>{1.0},
       true};

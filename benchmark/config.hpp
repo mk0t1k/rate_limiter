@@ -6,7 +6,7 @@
 
 namespace config {
 
-  constexpr int kBurstCapacity = 100;
+  constexpr std::size_t kBurstCapacity = 100;
 
   constexpr double kTargetRatePerSec = 1000.0; 
 

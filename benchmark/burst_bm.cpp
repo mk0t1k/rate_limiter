@@ -40,7 +40,9 @@ template <class LimiterType>
 static void BM_Burst_Traffic(benchmark::State& state) {
 
   std::vector<avito_limiter::key_type> keys = {"user_burst"};
-  static LimiterType limiter{keys.begin(), keys.end()};
+  static LimiterType limiter{
+      keys.begin(), keys.end(),
+      std::tuple{config::kBurstCapacity, 1.0F}};
 
   std::vector<double> latencies;
   latencies.reserve(kLatencyCapacity);
@@ -92,8 +94,7 @@ static void BM_Burst_CrossShard_Traffic(benchmark::State& state) {
   static const std::vector<avito_limiter::key_type> keys = CrossShardKeys();
   static LimiterType limiter{
       keys.begin(), keys.end(),
-      std::tuple<std::size_t, float>{
-          static_cast<std::size_t>(config::kBurstCapacity), 1.0F}};
+      std::tuple{config::kBurstCapacity, 1.0F}};
 
   const avito_limiter::key_type& key =
       CrossShardKeyForThread(keys, static_cast<int>(state.thread_index()));
