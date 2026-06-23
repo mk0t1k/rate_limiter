@@ -46,12 +46,10 @@ LeakyBucketShaper::LeakyBucketShaper(
 
 std::optional<LeakyBucketShaper::future_type> LeakyBucketShaper::AddRequest(
   const key_type& key) {
-  std::shared_lock sl(mtx_);
+  std::unique_lock sl(mtx_);
   if(queue_.size() + 1Z > conf_.capacity) {
     return std::nullopt;
   }
-  sl.unlock();
-  std::unique_lock ul(mtx_);
   queue_.emplace(key);
   future_type fut = queue_.back().prom.get_future();
   return fut;
@@ -63,8 +61,13 @@ std::size_t LeakyBucketShaper::GetNumAvail() const noexcept {
 }
 
 LeakyBucketShaper::~LeakyBucketShaper() {
-  std::unique_lock lock(mtx_);
-  stop_flag_ = true;
-  cva_.notify_one();
+  {
+    std::unique_lock lock(mtx_);
+    stop_flag_ = true;
+    cva_.notify_one();
+  }
+  if(queue_update_.joinable()) {
+    queue_update_.join();
+  }
 }
 } // namespace avito_limiter
