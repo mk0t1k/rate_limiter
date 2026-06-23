@@ -17,6 +17,9 @@ void PrintAccessInfo(const avito_limiter::key_type& key_name,
 }
 
 int main() {
+  avito_limiter::StoredData<avito_limiter::SlidingWindowAlgo> tmp{std::nullopt, 2UZ, 0.0F};
+  std::cout << tmp.GetNumAvail() << "\n";
+
   std::vector<avito_limiter::key_type> keys = {"a", "cd", "ef"};
   avito_limiter::ShardedTokenLimiter<4U, true> c_sharded{keys.begin(), keys.end(), 
     std::tuple<std::size_t, float>{3Z, 2.0F}, 4.0, 1.0};
@@ -36,6 +39,7 @@ int main() {
     if(key_name == "exit") {
       break;
     }
+    std::cout << "tmp " << tmp.Access() << " " << tmp.GetNumAvail() << "\n";
     PrintAccessInfo(key_name, intfc);
     PrintAccessInfo(key_name, static_cast<avito_limiter::IRateLimiter*>(&c_sharded));
     std::cout << static_cast<bool>(shaper->AddRequest(key_name)) 
