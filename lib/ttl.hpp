@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cmath>
+
 #include <chrono>
 #include <compare>
 #include <optional>
+#include <stdexcept>
 
 namespace avito_limiter {
 
@@ -28,6 +31,11 @@ public:
 
   void Set(value_type time_sec) noexcept {
     if(time_sec) {
+      offset_type val = time_sec.value();
+      if(val != val || std::isinf(val)) {
+        expire_time_ = std::nullopt;
+        return;
+      }
       auto res = clock_type::now() + std::chrono::duration<offset_type>{
         time_sec.value()};
       expire_time_ = std::chrono::time_point_cast<typename clock_type::duration>(
@@ -58,7 +66,7 @@ public:
     return !static_cast<bool>(expire_time_) || clock_type::now() <= ExpireTime();
   }
 
-  bool operator==(const TtlValue& other) const {
+  bool operator==(const TtlValue& other) const noexcept {
     bool is_infinite = !static_cast<bool>(expire_time_);
     bool is_other_infinite = !static_cast<bool>(other.expire_time_);
     if(is_infinite && is_other_infinite) {
@@ -70,7 +78,7 @@ public:
     return ExpireTime() == other.ExpireTime();
   }
 
-  std::weak_ordering operator<=>(const TtlValue& other) const {
+  std::weak_ordering operator<=>(const TtlValue& other) const noexcept {
     bool is_infinite = !static_cast<bool>(expire_time_);
     bool is_other_infinite = !static_cast<bool>(other.expire_time_);
     if(is_infinite && is_other_infinite) {

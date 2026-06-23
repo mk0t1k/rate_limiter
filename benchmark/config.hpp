@@ -2,15 +2,13 @@
 
 #include <cstddef>
 
-#include <chrono>
-
 namespace config {
 
   constexpr std::size_t kBurstCapacity = 100;
 
-  constexpr double kTargetRatePerSec = 1000.0; 
+  constexpr double kTargetRatePerSec = 1000.0;
 
-  constexpr auto kKeyTTL = std::chrono::seconds(5);
+  constexpr double kKeyTTL = 5.0;
 
   constexpr double kMinTestDurationSec = 1.0; // 10.0
 

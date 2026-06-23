@@ -3,7 +3,6 @@
 #include <atomic>
 #include <chrono>
 #include <mutex>
-#include <optional>
 #include <random>
 #include <string>
 #include <thread>
@@ -32,8 +31,8 @@ static void BM_Zombie_Traffic(benchmark::State& state) {
   static LimiterType limiter{
       empty_keys.begin(), empty_keys.end(),
       std::tuple{config::kBurstCapacity, 1.0F},
-      std::optional<double>{5.0},
-      std::optional<double>{1.0},
+      config::kKeyTTL,
+      1.0,
       true};
 
   thread_local size_t my_key_id = next_key_id.fetch_add(
@@ -50,7 +49,7 @@ static void BM_Zombie_Traffic(benchmark::State& state) {
   std::vector<double> latencies;
   latencies.reserve(bench::kLatencyCapacity);
 
-  limiter.Emplace(cached_key);
+  limiter.AddKey(cached_key, config::kKeyTTL);
 
   for (auto _ : state) {
 
@@ -60,7 +59,7 @@ static void BM_Zombie_Traffic(benchmark::State& state) {
     if (req_count >= config::kZombieReqsPerKey) {
       my_key_id = next_key_id.fetch_add(1, std::memory_order_relaxed);
       cached_key = "z_" + std::to_string(my_key_id);
-      limiter.Emplace(cached_key);
+      limiter.AddKey(cached_key, config::kKeyTTL);
       req_count = 0;
     }
 

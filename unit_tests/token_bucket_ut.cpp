@@ -1,10 +1,11 @@
 #include "gtest/gtest.h"
 
 #include <cstddef>
-#include <gtest/gtest.h>
 #include <limits>
+#include <memory>
 #include <thread>
 
+#include "lib/algorithms/alg_base.hpp"
 #include "lib/algorithms/token_bucket.hpp"
 #include "mock_clock.hpp"
 
@@ -12,7 +13,7 @@ namespace al = avito_limiter;
 
 using namespace std::chrono_literals;
 
-using AlgType =  al::StoredData<al::TokenBucketAlgo, MockClock>;
+using AlgType = al::StoredData<al::TokenBucketAlgo, MockClock>;
 
 class TokenBucketTests : public ::testing::Test {
 protected:
@@ -77,11 +78,13 @@ TEST_F(TokenBucketTests, TtlBoundsTest) {
 
 
 TEST(TokenBucketEdgeCasesTests, ZeroCapacity) {
+    MockClock::reset();
     AlgType zero_cap{std::nullopt, 0UZ, 1.0F};
     EXPECT_FALSE(zero_cap.Access());
 }
 
 TEST(TokenBucketEdgeCasesTests, ZeroRefill) {
+    MockClock::reset();
     AlgType zero_refill{std::nullopt, 2UZ, 0.0F};
     EXPECT_TRUE(zero_refill.Access());
     EXPECT_TRUE(zero_refill.Access());
@@ -92,6 +95,7 @@ TEST(TokenBucketEdgeCasesTests, ZeroRefill) {
 }
 
 TEST(TokenBucketEdgeCasesTests, InfinityRefillTest) {
+    MockClock::reset();
     AlgType inf_refill{std::nullopt, 2UZ, std::numeric_limits<float>::infinity()};
     for (size_t i = 0; i < 10; ++i) {
         EXPECT_TRUE(inf_refill.Access());
@@ -100,6 +104,7 @@ TEST(TokenBucketEdgeCasesTests, InfinityRefillTest) {
 }
 
 TEST(TokenBucketEdgeCasesTests, NegativeRefillTest) {
+    MockClock::reset();
     AlgType neg_refill{std::nullopt, 2UZ, -1.0F};
     MockClock::advance(2s);
     EXPECT_FALSE(neg_refill.Access());
@@ -110,8 +115,13 @@ TEST(TokenBucketEdgeCasesTests, NegativeRefillTest) {
 }
 
 TEST(TokenBucketEdgeCasesTests, NanRefillTest) {
-    EXPECT_DEBUG_DEATH(AlgType(std::nullopt, 
-        2UZ, std::numeric_limits<float>::quiet_NaN()), "");
-    EXPECT_DEBUG_DEATH(AlgType(std::nullopt, 
-        2UZ, std::numeric_limits<float>::signaling_NaN()), "");
+    MockClock::reset();
+    EXPECT_THROW({
+        AlgType(std::nullopt, 2UZ, 
+            std::numeric_limits<float>::quiet_NaN());}, 
+            std::logic_error);
+    EXPECT_THROW({
+        AlgType(std::nullopt, 2UZ, 
+            std::numeric_limits<float>::signaling_NaN());
+    }, std::logic_error);
 }

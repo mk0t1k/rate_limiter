@@ -1,10 +1,11 @@
 #pragma once
 
-#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <shared_mutex>
 #include <optional>
 #include <queue>
+#include <stop_token>
 #include <thread>
 
 #include "interface.hpp"
@@ -25,21 +26,24 @@ class LeakyBucketShaper final : public IRateShaper {
 
   std::queue<QueueValue> queue_;
   mutable std::shared_mutex mtx_;
+  std::condition_variable_any cva_;
   Config conf_;
-  std::atomic_bool run_queue_thread_;
-  std::thread queue_update_;
+  bool force_trigger_;
+  std::jthread queue_update_;
 
   void UpdateQueue();
 
-  void RunQueueThread();
+  void RunQueueThread(std::stop_token stoken);
 
 public:
   LeakyBucketShaper(std::size_t capacity, std::size_t cnt_remove, double wake_up_sec);
+
+  void ForceTrigger();
 
   std::optional<future_type> AddRequest(const key_type& key) override;
 
   std::size_t GetNumAvail() const noexcept override;
 
-  ~LeakyBucketShaper();
+  ~LeakyBucketShaper() = default;
 };
 } // namespace avito_limiter

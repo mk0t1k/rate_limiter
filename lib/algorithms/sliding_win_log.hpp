@@ -4,10 +4,7 @@
 
 #include <chrono>
 #include <queue>
-
-#include "alg_base.hpp"
-#include "interface.hpp"
-#include "ttl.hpp"
+#include <stdexcept>
 
 namespace avito_limiter {
 
@@ -39,8 +36,13 @@ public:
 
   SlidingWindowAlgo() = default;
 
-  SlidingWindowAlgo(std::size_t capacity, float dur_sec) : 
-    capacity_{capacity}, time_offs_sec_{dur_sec} {}
+  SlidingWindowAlgo(std::size_t capacity, float dur_sec) {
+    if(dur_sec != dur_sec) {
+      throw std::logic_error{"Duration must be real"};
+    }
+    capacity_ = capacity;
+    time_offs_sec_ = dur_sec;
+  }
 
   bool Access() {
     if(static_cast<Derived*>(this)->IsExpired()) {
@@ -51,7 +53,9 @@ public:
     if(accesses_.size() == capacity_) {
       return false;
     }
-    accesses_.push(clock_type::now());
+    if(time_offs_sec_ > 0.0F) {
+      accesses_.push(clock_type::now());
+    }
     return true;
   }
 

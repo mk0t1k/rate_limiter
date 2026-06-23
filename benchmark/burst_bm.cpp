@@ -120,29 +120,21 @@ using ShardedWinLimiterCompact =
     avito_limiter::ShardedWinLimiter<config::kShardCapacity, false>;
 
 BENCHMARK_TEMPLATE(BM_Burst_Traffic, avito_limiter::MutexTokenLimiter)
-    ->RangeMultiplier(2)
-    ->Range(10, config::kTargetRatePerSec)
     ->Threads(config::kNumThreads)
     ->Repetitions(config::kRepetitions)
     ->MinTime(config::kMinTestDurationSec);
 
 BENCHMARK_TEMPLATE(BM_Burst_Traffic, avito_limiter::MutexWinLimiter)
-    ->RangeMultiplier(2)
-    ->Range(10, config::kTargetRatePerSec)
     ->Threads(config::kNumThreads)
     ->Repetitions(config::kRepetitions)
     ->MinTime(config::kMinTestDurationSec);
 
 BENCHMARK_TEMPLATE(BM_Burst_CrossShard_Traffic, ShardedWinLimiterAligned)
-    ->RangeMultiplier(2)
-    ->Range(10, config::kTargetRatePerSec)
     ->Threads(config::kNumThreads)
     ->Repetitions(config::kRepetitions)
     ->MinTime(config::kMinTestDurationSec);
 
 BENCHMARK_TEMPLATE(BM_Burst_CrossShard_Traffic, ShardedWinLimiterCompact)
-    ->RangeMultiplier(2)
-    ->Range(10, config::kTargetRatePerSec)
     ->Threads(config::kNumThreads)
     ->Repetitions(config::kRepetitions)
     ->MinTime(config::kMinTestDurationSec);

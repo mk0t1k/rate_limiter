@@ -1,12 +1,14 @@
 #include "leaky_bucket.hpp"
 
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <stop_token>
 #include <thread>
 
 namespace avito_limiter {
 
 void LeakyBucketShaper::UpdateQueue() {
-  std::unique_lock ul(mtx_);
   for(std::size_t _ = 0U; _ < conf_.cnt_remove_per_run && !queue_.empty(); ++_) {
     QueueValue val = std::move(queue_.front());
     queue_.pop();
@@ -14,18 +16,32 @@ void LeakyBucketShaper::UpdateQueue() {
   }
 }
 
-void LeakyBucketShaper::RunQueueThread() {
-  while (run_queue_thread_.load(std::memory_order_relaxed)) {
-    std::this_thread::sleep_for(conf_.wakeup_dur);
+void LeakyBucketShaper::RunQueueThread(std::stop_token stoken) {
+  while (true) {
+    std::unique_lock ul(mtx_);
+    cva_.wait_for(ul, stoken, conf_.wakeup_dur, [this]{ return force_trigger_; });
+
+    force_trigger_ = false;
+
+    if (stoken.stop_requested()) {
+      break;
+    }
+
     UpdateQueue();
   }
+}
+
+void LeakyBucketShaper::ForceTrigger() {
+  std::unique_lock lock(mtx_);
+  force_trigger_ = true;
+  cva_.notify_one();
 }
 
 LeakyBucketShaper::LeakyBucketShaper(
   std::size_t capacity, std::size_t cnt_remove, double wake_up_sec) :
   conf_{.capacity=capacity, .cnt_remove_per_run=cnt_remove, 
     .wakeup_dur=std::chrono::duration<double>(wake_up_sec)},
-  run_queue_thread_{true},
+    force_trigger_(false),
   queue_update_{&LeakyBucketShaper::RunQueueThread, this} {}
 
 std::optional<LeakyBucketShaper::future_type> LeakyBucketShaper::AddRequest(
@@ -46,8 +62,4 @@ std::size_t LeakyBucketShaper::GetNumAvail() const noexcept {
   return conf_.capacity - queue_.size();
 }
 
-LeakyBucketShaper::~LeakyBucketShaper() {
-  run_queue_thread_.store(false, std::memory_order_relaxed);
-  queue_update_.join();
-}
 } // namespace avito_limiter

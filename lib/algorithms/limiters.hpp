@@ -2,11 +2,7 @@
 
 #include <cstddef>
 
-#include <type_traits>
-#include <utility>
-
 #include "interface.hpp"
-#include "meta.hpp"
 #include "mutex_storage.hpp"
 #include "sliding_win_log.hpp"
 #include "token_bucket.hpp"

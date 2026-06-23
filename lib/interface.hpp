@@ -4,24 +4,28 @@
 #include <cstdint>
 
 #include <array>
+#include <chrono>
 #include <concepts>
 #include <future>
-#include <mutex>
 #include <new>
 #include <optional>
 #include <string>
-#include <thread>
 #include <variant>
 #include <vector>
 
 #include "meta.hpp"
+#include "ttl.hpp"
 
 namespace avito_limiter {
 
 using key_type = std::string;
+using ttl_val_type = typename TtlValue<std::chrono::steady_clock>::value_type;
 
 class IRateLimiter {
 public:
+  virtual bool AddKey(const key_type& key, 
+    ttl_val_type ttl = std::nullopt) { return false; }
+
   virtual bool Exists(const key_type& key) const noexcept = 0;
 
   virtual bool Access(const key_type& key) = 0;
@@ -92,6 +96,10 @@ public:
   template<typename ... Args>
   RateLimiterWrapper(Args&&... args) : storage_{std::forward<Args>(args)...} {}
 
+  bool AddKey(const key_type& key, ttl_val_type ttl = std::nullopt) override { 
+    return storage_.Add(key, ttl);
+  }
+
   bool Exists(const key_type& key) const noexcept override { 
     auto res = storage_.Visit(key, [](auto&& alg) { return 0; });
     if(std::holds_alternative<std::false_type>(res)) {
@@ -141,7 +149,7 @@ class ShardedWrapper final : public IRateLimiter {
     alignof(Limiter)>::value;
 
   struct alignas(kAlignment) LimiterPlace {
-    alignas(Limiter) std::byte bytes[sizeof(Limiter)];
+    alignas(kAlignment) std::byte bytes[sizeof(Limiter)];
   };
 
   std::size_t GetKeyIndex(const KeyType& key) const noexcept {
@@ -177,6 +185,8 @@ class ShardedWrapper final : public IRateLimiter {
 
   Hash hash_func_;
   LimiterPlace limiters_[CountShards];
+  static_assert(!OptAlign || (OptAlign && 
+    sizeof(limiters_) % impl::kCacheLineSize == 0));
 public:
   using hasher = Hash;
   
@@ -194,6 +204,10 @@ public:
       EmplaceAt(i, keys_per_limiter[i].begin(), keys_per_limiter[i].end(),
         std::forward<Args>(args)...);
     }
+  }
+
+  bool AddKey(const key_type& key, ttl_val_type ttl = std::nullopt) override { 
+    return GetByKey(key)->AddKey(key, ttl);
   }
 
   bool Exists(const key_type& key) const noexcept override {
