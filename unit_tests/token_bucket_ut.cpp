@@ -116,8 +116,12 @@ TEST(TokenBucketEdgeCasesTests, NegativeRefillTest) {
 
 TEST(TokenBucketEdgeCasesTests, NanRefillTest) {
     MockClock::reset();
-    EXPECT_DEBUG_DEATH(AlgType(std::nullopt, 
-        2UZ, std::numeric_limits<float>::quiet_NaN()), "");
-    EXPECT_DEBUG_DEATH(AlgType(std::nullopt, 
-        2UZ, std::numeric_limits<float>::signaling_NaN()), "");
+    EXPECT_THROW({
+        AlgType(std::nullopt, 2UZ, 
+            std::numeric_limits<float>::quiet_NaN());}, 
+            std::logic_error);
+    EXPECT_THROW({
+        AlgType(std::nullopt, 2UZ, 
+            std::numeric_limits<float>::signaling_NaN());
+    }, std::logic_error);
 }

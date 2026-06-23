@@ -71,6 +71,8 @@ private:
     ) {
       return stored_data_t{offs, std::get<Nums>(alg_args)...};
     }
+
+    Data() = default;
     
     template<typename Sdata>
     Data(Sdata&& dt) : rate_limiter{std::forward<Sdata>(dt)} {}

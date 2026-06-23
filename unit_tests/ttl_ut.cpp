@@ -123,9 +123,22 @@ TEST(EdgeCasesTests, NegTtl) {
     EXPECT_FALSE(static_cast<bool>(neg_ttl));
 }
 
-TEST(EdgeCasesTests, NanTtl) {
+TEST(EdgeCasesTests, QuietNanTtl) {
     MockClock::reset();
-    
-    EXPECT_DEBUG_DEATH(al::TtlValue<MockClock>(std::optional(std::numeric_limits<double>::quiet_NaN())), "");
-    EXPECT_DEBUG_DEATH(al::TtlValue<MockClock>(std::optional(std::numeric_limits<double>::signaling_NaN())), "");
+
+    al::TtlValue<MockClock> nan_ttl {std::numeric_limits<double>::quiet_NaN()};
+    EXPECT_TRUE(static_cast<bool>(nan_ttl));
+
+    MockClock::advance(24h * 365 * 10);
+    EXPECT_TRUE(static_cast<bool>(nan_ttl));
+}
+
+TEST(EdgeCasesTests, SignalingNanTtl) {
+    MockClock::reset();
+
+    al::TtlValue<MockClock> nan_ttl {std::numeric_limits<double>::signaling_NaN()};
+    EXPECT_TRUE(static_cast<bool>(nan_ttl));
+
+    MockClock::advance(24h * 365 * 10);
+    EXPECT_TRUE(static_cast<bool>(nan_ttl));
 }

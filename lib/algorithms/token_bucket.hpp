@@ -1,8 +1,10 @@
 #pragma once 
 
+#include <cmath>
 #include <cstddef>
 
 #include <chrono>
+#include <stdexcept>
 
 namespace avito_limiter {
 
@@ -28,19 +30,22 @@ private:
     float dur_sec = std::chrono::duration<float>(curr - last_access_).count();
     last_access_ = curr;
     float cnt_refill = std::min(capacity_, refill_tok_sec_ * dur_sec);
-    curr_tok_ = std::min(capacity_, cnt_refill + curr_tok_);
+    curr_tok_ = std::max(std::min(capacity_, cnt_refill + curr_tok_), 0.0F);
   }
 
 public:
   TokenBucketAlgo() : last_access_{clock_type::now()} {}
   
-  TokenBucketAlgo(std::size_t capacity, float v_refill) :
-    last_access_{clock_type::now()}, 
-    refill_tok_sec_{v_refill} 
-    {
-      capacity_ = static_cast<float>(capacity);
-      curr_tok_ = capacity_;
+  TokenBucketAlgo(std::size_t capacity, float v_refill) {
+    if(v_refill != v_refill) {
+      throw std::logic_error{"Refill speed must be real"};
     }
+    last_access_ = clock_type::now();
+    refill_tok_sec_ = v_refill;
+    capacity_ = static_cast<float>(capacity);
+    curr_tok_ = capacity_;
+    
+  }
 
   bool Access() noexcept {
     if(static_cast<Derived*>(this)->IsExpired()) {
@@ -57,10 +62,10 @@ public:
 
   std::size_t GetNumAvail() const noexcept {
     if(static_cast<const Derived*>(this)->IsExpired()) {
-      return 0Z;
+      return 0UZ;
     }
     Update();
-    return static_cast<std::size_t>(curr_tok_);
+    return static_cast<std::size_t>(std::abs(curr_tok_));
   }
 };
 } // namespace avito_limiter

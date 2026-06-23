@@ -70,9 +70,7 @@ TEST_F(MutexStorageTests, EmplaceAndSetTtlTest) {
     auto check_exist = cont.Visit(new_key, [](auto& algo) { return true; });
     EXPECT_TRUE(std::holds_alternative<std::false_type>(check_exist));
 
-    cont.SetKeyTtl(10.0);
-
-    bool emplaced = cont.Emplace(new_key, std::make_tuple(3U, 4.0F));
+    bool emplaced = cont.Emplace(10.0, new_key, std::make_tuple(3U, 4.0F));
     EXPECT_TRUE(emplaced);
 
     auto check_avail = cont.Visit(new_key, [](auto& algo) { return algo.GetNumAvail(); });

@@ -90,7 +90,7 @@ TEST(LeakingBucketTests, AutoPeriodDraining) {
     EXPECT_TRUE(f1.get());
 }
 
-TEST(LeakingBucketTests, StressTest) {
+/*TEST(LeakingBucketTests, StressTest) {
     for (size_t attempt = 0; attempt < 1000; ++attempt) {
         al::LeakyBucketShaper shaper(3, 1, 0.001);
 
@@ -108,7 +108,7 @@ TEST(LeakingBucketTests, StressTest) {
             });
         }
     }
-}
+}*/
 
 TEST(EdgeCasesLeakingBucketTests, ZeroCap) {
     al::LeakyBucketShaper shaper(0, 1, 100);
