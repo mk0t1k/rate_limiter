@@ -269,4 +269,106 @@
 
 = 3. Экспериментальная часть
 
+#let verdict-supported = text(fill: green.darken(20%), weight: "bold")[подтверждена]
+#let verdict-partial = text(fill: orange.darken(20%), weight: "bold")[частично]
+#let verdict-not = text(fill: red.darken(20%), weight: "bold")[не подтверждена]
+
+Общие настройки: `MinTime = 10` с, `Repetitions = 3`, `Threads = 8`. Замерялись p50 и p99 latency вызова `Access()` (mean по повторам).
+
+*Гипотеза 1* При высокой конкурентной нагрузке `ShardedWinLimiter` даёт меньший p99, чем `MutexWinLimiter`.
+
+*Прогон.* Uniform, 1000 req/s. Mutex — один hot key; sharded — cross-shard (2 hot keys на границе шардов).
+
+#align(center)[
+  #table(
+    columns: (2fr, 1fr, 1.2fr, 1fr, 1.2fr),
+    align: (left, right, right, right, center),
+    stroke: 0.5pt + luma(200),
+    fill: (col, row) => if row == 0 { luma(240) } else { none },
+
+    table.header(
+      [*Реализация*],
+      [*p50, ns*],
+      [*p99, ns*],
+      [*$Delta$ p99*],
+      [*Итог*],
+    ),
+
+    [MutexWinLimiter], [1 833], [60 600 #text(fill: luma(120))[±8%]], [—], [],
+    [ShardedWin (compact)], [1 733], [51 500 #text(fill: luma(120))[±11%]], [#text(fill: green.darken(20%))[-15.0%]], [#verdict-supported],
+    [ShardedWin (aligned)], [1 600], [39 467 #text(fill: luma(120))[±14%]], [#text(fill: green.darken(20%))[-34.9%]], [#verdict-supported],
+  )
+]
+
+_Вывод._ Sharded снижает p99: compact — на 15%, aligned — на 35%. Aligned лучше за счёт выравнения шардов по cache line (меньше false sharing). Гипотеза #verdict-supported.
+
+*Гипотеза 2* На Zombie-трафике Sliding Window хуже Token Bucket по latency (и по памяти — ожидается).
+
+*Прогон.* Zombie, 5000 req/s, 2 запроса на ключ, TTL = 5 с, lazy cleaner каждые 1 с.
+
+#align(center)[
+  #table(
+    columns: (1.8fr, 1fr, 1.2fr, 1fr, 1fr, 1.2fr),
+    align: (left, right, right, right, right, center),
+    stroke: 0.5pt + luma(200),
+    fill: (col, row) => if row == 0 { luma(240) } else { none },
+
+    table.header(
+      [*Реализация*],
+      [*p50, ns*],
+      [*p99, ns*],
+      [*$Delta$ p50*],
+      [*$Delta$ p99*],
+      [*Память*],
+    ),
+
+    [Token Bucket], [1 100], [107 533 #text(fill: luma(120))[±19%]], [—], [—], [—],
+    [Sliding Window], [2 700], [194 367 #text(fill: luma(120))[±33%]], [#text(fill: red.darken(20%))[+145%]], [#text(fill: red.darken(20%))[+81%]], [не измерялась],
+  )
+]
+
+_Вывод._ Sliding Window: p50 в 2.5 раза выше, p99 — на 81%. Token Bucket хранит O(1) состояние на ключ; window — timestamp на каждый запрос и работа с кучей при churn ключей. Память бенчмарк не считает. Гипотеза #verdict-partial (latency — да, память — нет данных).
+
+*Гипотеза 3* На Burst Token Bucket быстрее пропускает легальный спайк с меньшей задержкой.
+
+*Прогон.* Burst: 50 запросов $times$ 100 ms, пауза 1 с, `burst_capacity = 100`, 8 потоков.
+
+#align(center)[
+  #table(
+    columns: (2fr, 1fr, 1.2fr, 1fr, 1.2fr),
+    align: (left, right, right, right, center),
+    stroke: 0.5pt + luma(200),
+    fill: (col, row) => if row == 0 { luma(240) } else { none },
+
+    table.header(
+      [*Реализация*],
+      [*p50, ns*],
+      [*p99, ns*],
+      [*$Delta$ p50*],
+      [*$Delta$ p99*],
+    ),
+
+    [Token Bucket], [1 167], [33 267 #text(fill: luma(120))[±48%]], [—], [—],
+    [Sliding Window], [1 500], [56 667 #text(fill: luma(120))[±92%]], [#text(fill: red.darken(20%))[+29%]], [#text(fill: red.darken(20%))[+70%]],
+  )
+]
+
+_Вывод._ Token Bucket: p50 $approx$ 1.2 ms, p99 $approx$ 33 ms; window хуже на 29% / 70%. На спайке bucket списывает токен за $O(1)$; window чистит журнал на каждый запрос. `items_per_sec` здесь не смотрим — на результат влияет `sleep` между итерациями. Гипотеза #verdict-supported.
+
+== Сводка
+
+#align(center)[
+  #table(
+    columns: (0.5fr, 2.5fr, 1.2fr),
+    align: (center, left, center),
+    stroke: 0.5pt + luma(200),
+    fill: (col, row) => if row == 0 { luma(240) } else { none },
+
+    table.header([*№*], [*Гипотеза*], [*Итог*]),
+    [1], [Sharded p99 < Mutex p99 @ 1000 rps], [#verdict-supported],
+    [2], [Window хуже Token на Zombie], [#verdict-partial],
+    [3], [Token быстрее на Burst], [#verdict-supported],
+  )
+]
+
 = 4. Результаты работы
