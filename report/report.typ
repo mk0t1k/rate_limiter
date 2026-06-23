@@ -264,7 +264,9 @@
 
 == 2.5. Нагрузочное тестирование
 
-Для проведения экспериментального анализа производительности реализован параметризуемый многопоточный генератор трафика, интегрированный с инфраструктурой Google Benchmark. Инструмент поддерживает точную эмуляцию пяти ключевых паттернов нагрузки: `Uniform` (равномерный), `Burst` (всплески), `Diurnal` (суточные циклы), `Sparse + Burst` (разреженный со
+Для проведения экспериментального анализа производительности реализован параметризуемый многопоточный генератор трафика, интегрированный с инфраструктурой Google Benchmark. Инструмент поддерживает точную эмуляцию пяти ключевых паттернов нагрузки: `Uniform` (равномерный), `Burst` (всплески), `Diurnal` (суточные циклы), `Sparse + Burst` (разреженный со всплесками) и `Zombie` (паразитный фоновый трафик).
+
+Генератор позволяет гибко конфигурировать интенсивность поступающих запросов, количество потоков-клиентов и параметры распределения ключей. Это дает возможность собирать репрезентативные метрики (Throughput, p50/p99 latency) и формировать надежную статистическую базу для сравнения эффективности алгоритмов в реальных условиях.
 
 = 3. Экспериментальная часть
 
@@ -272,50 +274,52 @@
 #let verdict-partial = text(fill: orange.darken(20%), weight: "bold")[частично]
 #let verdict-not = text(fill: red.darken(20%), weight: "bold")[не подтверждена]
 
-Общие настройки: `MinTime = 10` с, `Repetitions = 3`, `Threads = 8`. Замерялись p50 и p99 latency вызова `Access()` (mean по повторам).
+*Общие настройки:* `MinTime = 10 с`, `Repetitions = 3`, `Threads = 8`. Замерялись `p50` и `p99` latency вызова `Access()` (mean по повторам).
 
-*Гипотеза 1* При высокой конкурентной нагрузке `ShardedWinLimiter` даёт меньший p99, чем `MutexWinLimiter`.
+== Гипотеза 1
+*Суть:* При высокой конкурентной нагрузке `ShardedWinLimiter` даёт меньший `p99`, чем `MutexWinLimiter`.
 
-*Прогон.* Uniform, 1000 req/s. Mutex — один hot key; sharded — cross-shard (2 hot keys на границе шардов).
+*Прогон:* Uniform, 1000 RPS. Mutex — один hot key; Sharded — cross-shard (2 hot keys на границе шардов).
 
 #align(center)[
   #table(
     columns: (2fr, 1fr, 1.2fr, 1fr, 1.2fr),
-    align: (left, right, right, right, center),
+    align: (left, right, right, right, right),
     stroke: 0.5pt + luma(200),
     fill: (col, row) => if row == 0 { luma(240) } else { none },
 
     table.header(
       [*Реализация*],
-      [*p50, ns*],
-      [*p99, ns*],
+      [*p50, нс*],
+      [*p99, нс*],
+      [*$Delta$ p50*],
       [*$Delta$ p99*],
-      [*Итог*],
     ),
 
-    [MutexWinLimiter], [1 833], [60 600 #text(fill: luma(120))[±8%]], [—], [],
-    [ShardedWin (compact)], [1 733], [51 500 #text(fill: luma(120))[±11%]], [#text(fill: green.darken(20%))[-15.0%]], [#verdict-supported],
-    [ShardedWin (aligned)], [1 600], [39 467 #text(fill: luma(120))[±14%]], [#text(fill: green.darken(20%))[-34.9%]], [#verdict-supported],
+    [MutexWinLimiter], [1 833], [60 600 #text(fill: luma(120))[±8%]], [—], [—],
+    [ShardedWin (compact)], [1 733], [51 500 #text(fill: luma(120))[±11%]], [#text(fill: green.darken(20%))[-5.5%]], [#text(fill: green.darken(20%))[-15.0%]],
+    [ShardedWin (aligned)], [1 600], [39 467 #text(fill: luma(120))[±14%]], [#text(fill: green.darken(20%))[-12.7%]], [#text(fill: green.darken(20%))[-34.9%]],
   )
 ]
 
-_Вывод._ Sharded снижает p99: compact — на 15%, aligned — на 35%. Aligned лучше за счёт выравнения шардов по cache line (меньше false sharing). Гипотеза #verdict-supported.
+*Вывод:* Sharded снижает `p99`: compact — на 15%, aligned — на 35%. Aligned-версия эффективнее за счёт выравнивания шардов по кэш-линии (меньше false sharing). Гипотеза #verdict-supported.
 
-*Гипотеза 2* На Zombie-трафике Sliding Window хуже Token Bucket по latency (и по памяти — ожидается).
+== Гипотеза 2
+*Суть:* На Zombie-трафике Sliding Window хуже Token Bucket по latency (и ожидается, что по памяти).
 
-*Прогон.* Zombie, 5000 req/s, 2 запроса на ключ, TTL = 5 с, lazy cleaner каждые 1 с.
+*Прогон:* Zombie, 5000 RPS, 2 запроса на ключ, TTL = 5 с, lazy cleaner каждые 1 с.
 
 #align(center)[
   #table(
-    columns: (1.8fr, 1fr, 1.2fr, 1fr, 1fr, 1.2fr),
+    columns: (2fr, 1fr, 1.2fr, 1fr, 1fr, 1.2fr),
     align: (left, right, right, right, right, center),
     stroke: 0.5pt + luma(200),
     fill: (col, row) => if row == 0 { luma(240) } else { none },
 
     table.header(
       [*Реализация*],
-      [*p50, ns*],
-      [*p99, ns*],
+      [*p50, нс*],
+      [*p99, нс*],
       [*$Delta$ p50*],
       [*$Delta$ p99*],
       [*Память*],
@@ -326,23 +330,24 @@ _Вывод._ Sharded снижает p99: compact — на 15%, aligned — на
   )
 ]
 
-_Вывод._ Sliding Window: p50 в 2.5 раза выше, p99 — на 81%. Token Bucket хранит O(1) состояние на ключ; window — timestamp на каждый запрос и работа с кучей при churn ключей. Память бенчмарк не считает. Гипотеза #verdict-partial (latency — да, память — нет данных).
+*Вывод:* Sliding Window работает значительно медленнее: `p50` в 2.5 раза выше, `p99` — на 81%. Token Bucket хранит $O(1)$ состояние на ключ, в то время как Window сохраняет timestamp на каждый запрос и требует работы с кучей при ротации ключей. Потребление памяти бенчмарком не оценивалось. Гипотеза #verdict-partial (по latency — да, по памяти — нет данных).
 
-*Гипотеза 3* На Burst Token Bucket быстрее пропускает легальный спайк с меньшей задержкой.
+== Гипотеза 3
+*Суть:* На Burst-нагрузке Token Bucket быстрее пропускает легальный всплеск с меньшей задержкой.
 
-*Прогон.* Burst: 50 запросов $times$ 100 ms, пауза 1 с, `burst_capacity = 100`, 8 потоков.
+*Прогон:* Burst: 50 запросов $times$ 100 мс, пауза 1 с, `burst_capacity = 100`, 8 потоков.
 
 #align(center)[
   #table(
     columns: (2fr, 1fr, 1.2fr, 1fr, 1.2fr),
-    align: (left, right, right, right, center),
+    align: (left, right, right, right, right),
     stroke: 0.5pt + luma(200),
     fill: (col, row) => if row == 0 { luma(240) } else { none },
 
     table.header(
       [*Реализация*],
-      [*p50, ns*],
-      [*p99, ns*],
+      [*p50, нс*],
+      [*p99, нс*],
       [*$Delta$ p50*],
       [*$Delta$ p99*],
     ),
@@ -352,9 +357,9 @@ _Вывод._ Sliding Window: p50 в 2.5 раза выше, p99 — на 81%. To
   )
 ]
 
-_Вывод._ Token Bucket: p50 $approx$ 1.2 ms, p99 $approx$ 33 ms; window хуже на 29% / 70%. На спайке bucket списывает токен за $O(1)$; window чистит журнал на каждый запрос. `items_per_sec` здесь не смотрим — на результат влияет `sleep` между итерациями. Гипотеза #verdict-supported.
+*Вывод:* Token Bucket показывает `p50` $approx$ 1.2 мс, `p99` $approx$ 33 мс; Sliding Window хуже на 29% и 70% соответственно. На всплеске Bucket списывает токен за $O(1)$, тогда как Window очищает журнал на каждый запрос. (Метрика `items_per_sec` здесь не учитывается, так как на неё влияет `sleep` между итерациями). Гипотеза #verdict-supported.
 
-== Сводка
+== Сводка результатов
 
 #align(center)[
   #table(
@@ -364,7 +369,7 @@ _Вывод._ Token Bucket: p50 $approx$ 1.2 ms, p99 $approx$ 33 ms; window ху
     fill: (col, row) => if row == 0 { luma(240) } else { none },
 
     table.header([*№*], [*Гипотеза*], [*Итог*]),
-    [1], [Sharded p99 < Mutex p99 @ 1000 rps], [#verdict-supported],
+    [1], [Sharded `p99` < Mutex `p99` \@ 1000 RPS], [#verdict-supported],
     [2], [Window хуже Token на Zombie], [#verdict-partial],
     [3], [Token быстрее на Burst], [#verdict-supported],
   )
