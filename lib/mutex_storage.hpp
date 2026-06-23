@@ -205,6 +205,11 @@ public:
     return res.second;
   }
 
+  std::size_t KeyCount() const noexcept {
+    std::shared_lock lk(main_mutex_);
+    return keys_.size();
+  }
+
   template<typename Self, typename Func, typename ... Args>
   auto Visit(this Self&& self, const KeyType& key, Func&& func, 
     Args&&... args) -> std::variant<std::false_type, 

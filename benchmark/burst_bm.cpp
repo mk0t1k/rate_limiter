@@ -60,6 +60,7 @@ static void BM_Burst_Traffic(benchmark::State& state) {
                                  std::move(latencies));
 
   state.SetItemsProcessed(state.iterations());
+  bench::PublishKeyCount(state, limiter);
 }
 
 template <class LimiterType>
@@ -112,6 +113,7 @@ static void BM_Burst_CrossShard_Traffic(benchmark::State& state) {
                                  std::move(latencies));
 
   state.SetItemsProcessed(state.iterations());
+  bench::PublishKeyCount(state, limiter);
 }
 
 using ShardedWinLimiterAligned =

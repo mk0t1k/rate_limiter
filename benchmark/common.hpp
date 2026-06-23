@@ -83,4 +83,13 @@ inline void FinishLatencyCollection(
   }
 }
 
+template<typename Limiter>
+inline void PublishKeyCount(benchmark::State& state, const Limiter& limiter) {
+  if (state.thread_index() != 0) {
+    return;
+  }
+  state.counters["keys_live"] =
+      static_cast<double>(limiter.GetKeyCount());
+}
+
 } // namespace bench

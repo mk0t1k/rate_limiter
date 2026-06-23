@@ -127,6 +127,10 @@ public:
   bool Emplace(const key_type& key) {
     return storage_.Emplace(key, std::tuple<>{});
   }
+
+  std::size_t GetKeyCount() const noexcept {
+    return storage_.KeyCount();
+  }
 };
 
 namespace impl {
@@ -224,6 +228,16 @@ public:
 
   bool Emplace(const key_type& key) {
     return GetByKey(key)->Emplace(key);
+  }
+
+  std::size_t GetKeyCount() const noexcept {
+    std::size_t total = 0UZ;
+    for (std::size_t i = 0UZ; i < CountShards; ++i) {
+      const std::byte* byte_ptr = limiters_[i].bytes;
+      const Limiter* lim_ptr = reinterpret_cast<const Limiter*>(byte_ptr);
+      total += lim_ptr->GetKeyCount();
+    }
+    return total;
   }
 
   ~ShardedWrapper() {

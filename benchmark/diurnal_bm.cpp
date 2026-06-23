@@ -68,6 +68,9 @@ static void BM_Diurnal_Traffic(benchmark::State& state) {
 
   bench::FinishLatencyCollection(state, s_mtx, s_per_thread_lats, s_done,
                                  std::move(latencies));
+
+  state.SetItemsProcessed(state.iterations());
+  bench::PublishKeyCount(state, limiter);
 }
 
 template <class LimiterType>
@@ -126,6 +129,9 @@ static void BM_Diurnal_CrossShard_Traffic(benchmark::State& state) {
 
   bench::FinishLatencyCollection(state, s_mtx_cs, s_per_thread_lats_cs, s_done_cs,
                                  std::move(latencies));
+
+  state.SetItemsProcessed(state.iterations());
+  bench::PublishKeyCount(state, limiter);
 }
 
 using ShardedWinLimiterAligned =
