@@ -1,7 +1,7 @@
 
 #include <gtest/gtest.h>
 
-#include <lib/limiters.hpp>
+#include <lib/algorithms/limiters.hpp>
 
 namespace al = avito_limiter;
 

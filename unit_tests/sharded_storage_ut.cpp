@@ -3,56 +3,71 @@
 #include <thread>
 #include <type_traits>
 #include <vector>
+#include <tuple>
+#include <memory>
 
 #include <gtest/gtest.h>
 
 #include "lib/interface.hpp"
-#include "lib/sliding_win_log.hpp"
-#include <lib/sharded_storage.hpp>
+#include "lib/mutex_storage.hpp"
+#include "lib/algorithms/sliding_win_log.hpp"
 
 #include "mock_clock.hpp"
 
 namespace al = avito_limiter;
 
-using Alg = al::StoredData<al::SlidingWindowAlgo, MockClock>;
-
-struct TrackingAlg {
+struct TrackingLimiter : public al::IRateLimiter {
+    static inline std::vector<void*> instances;
     static inline int alive = 0;
     static inline int destr_calls = 0;
     static inline int constr_calls = 0;
 
-    TrackingAlg() { ++constr_calls, ++alive; }
-    TrackingAlg(const TrackingAlg&) { ++constr_calls, ++alive; }
-    ~TrackingAlg() { ++destr_calls, --alive; }
+    static void Reset() {
+        instances.clear();
+        alive = 0;
+        destr_calls = 0;
+        constr_calls = 0;
+    }
 
-    bool Access() { return true; }
-    std::size_t GetNumAvail() const noexcept { return 1; }
-    bool Verify() { return true; }
-    std::size_t GetAvail() const noexcept { return 1; }
+    template<typename ... Args>
+    TrackingLimiter(Args&&...) {
+        instances.push_back(this); 
+        ++constr_calls;
+        ++alive;
+    }
+
+    ~TrackingLimiter() override {
+        ++destr_calls;
+        --alive;
+    }
+
+    bool Exists(const al::key_type&) const noexcept override { return true; }
+    bool Access(const al::key_type&) override { return true; }
+    std::size_t GetNumAvail(const al::key_type&) const noexcept override { return 1; }
 };
 
-class ShardedStorageTests : public ::testing::Test {
-protected:
+using TestMutexWinLimiter = 
+  al::RateLimiterWrapper<al::MutexStorage, al::SlidingWindowAlgo, al::key_type, MockClock>;
 
+template<std::size_t CountShards, bool OptAlign>
+using TestShardedWinLimiter = 
+  al::ShardedWrapper<TestMutexWinLimiter, al::key_type, CountShards, std::hash<al::key_type>, OptAlign>;
+
+
+class ShardedWrapperTests : public ::testing::Test {
+protected:
     void TearDown() override {
         MockClock::reset();
     }
 
-    ShardedStorageTests() : 
-        cont(keys.begin(), keys.end(), alg) {}
+    ShardedWrapperTests() : 
+        cont(keys.begin(), keys.end(), std::make_tuple(3U, 4.0F), 3.0) {}
     
-    Alg alg{3.0, 3U, 4.0F}; 
     std::vector<al::key_type> keys = {"a", "b", "c", "d", "e", "f", "g"};
-    al::ShardedStorage<
-        Alg, 
-        std::integral_constant<size_t, 3>, 
-        std::bool_constant<true>, 
-        avito_limiter::key_type
-    > cont;
+    TestShardedWinLimiter<3, true> cont;
 };
 
-TEST_F(ShardedStorageTests, ConcurrencyTest) {
-
+TEST_F(ShardedWrapperTests, ConcurrencyTest) {
     std::atomic<size_t> success_count{0};
     std::vector<std::jthread> ths;
 
@@ -64,11 +79,7 @@ TEST_F(ShardedStorageTests, ConcurrencyTest) {
     for (size_t t = 0; t < num_threads; ++t) {
         ths.emplace_back([&]() { 
             for (size_t i = 0; i < iterations_per_thread; ++i) {
-                auto res = cont.Visit(target_key, [](Alg& algo) {
-                    return algo.Access();    
-                });
-                
-                if (std::holds_alternative<bool>(res) && std::get<bool>(res)) {
+                if (cont.Access(target_key)) {
                     success_count.fetch_add(1, std::memory_order_relaxed);
                 }
             }
@@ -80,26 +91,22 @@ TEST_F(ShardedStorageTests, ConcurrencyTest) {
     EXPECT_EQ(success_count.load(), 3);
 }
 
-TEST_F(ShardedStorageTests, MemoryLeakTest) {
+TEST(ShardedWrapperSimpleTests, AlignmentAndMemoryLeakTest) {
+    TrackingLimiter::Reset();
     {
         std::vector<al::key_type> keys = {"a", "b", "c", "d", "e", "f", "g"};
-        al::ShardedStorage<
-            TrackingAlg, 
-            std::integral_constant<size_t, 3>, 
-            std::bool_constant<true>, 
-            avito_limiter::key_type
-        > cont (keys.begin(), keys.end());
-    }
-    EXPECT_EQ(TrackingAlg::constr_calls, TrackingAlg::destr_calls);
-}
+        
+        al::ShardedWrapper<TrackingLimiter, al::key_type, 3, std::hash<al::key_type>, true> wrapper(
+            keys.begin(), keys.end()
+        );
 
-TEST_F(ShardedStorageTests, AlingmentTest) {
-    for (auto&& key : keys) {
-        auto ptr = std::get<Alg*>(cont.Visit(key, [](Alg& alg){return &alg;}));
-        EXPECT_TRUE(reinterpret_cast<size_t>(ptr) % std::hardware_constructive_interference_size == 0);
-    }
-}
+        EXPECT_EQ(TrackingLimiter::constr_calls, 3);
+        EXPECT_EQ(TrackingLimiter::alive, 3);
 
-TEST_F(ShardedStorageTests, TtlCleanerTest) {
-    
+        for (void* ptr : TrackingLimiter::instances) {
+            EXPECT_TRUE(reinterpret_cast<size_t>(ptr) % std::hardware_destructive_interference_size == 0);
+        }
+    }
+    EXPECT_EQ(TrackingLimiter::destr_calls, 3);
+    EXPECT_EQ(TrackingLimiter::alive, 0);
 }

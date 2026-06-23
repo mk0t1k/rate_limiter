@@ -5,8 +5,8 @@
 #include <chrono>
 
 #include "alg_base.hpp"
-#include "interface.hpp"
-#include "ttl.hpp"
+#include "../interface.hpp"
+#include "../ttl.hpp"
 
 namespace avito_limiter {
 

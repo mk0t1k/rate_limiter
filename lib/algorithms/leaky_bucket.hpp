@@ -9,7 +9,7 @@
 #include <stop_token>
 #include <thread>
 
-#include "interface.hpp"
+#include "../interface.hpp"
 
 namespace avito_limiter {
 
@@ -36,10 +36,10 @@ class LeakyBucketShaper final : public IRateShaper {
 
   void RunQueueThread(std::stop_token stoken);
 
-  void ForceTrigger();
-
 public:
   LeakyBucketShaper(std::size_t capacity, std::size_t cnt_remove, double wake_up_sec);
+
+  void ForceTrigger();
 
   std::optional<future_type> AddRequest(const key_type& key) override;
 

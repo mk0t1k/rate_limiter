@@ -23,6 +23,7 @@ add_executable(
   ttl_ut.cpp
   sharded_storage_ut.cpp
   mutex_storage_ut.cpp
+  Interface_ut.cpp
 )
 
 include(GoogleTest)
