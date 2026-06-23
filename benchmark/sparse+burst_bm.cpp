@@ -1,7 +1,9 @@
 #include <benchmark/benchmark.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <mutex>
 #include <random>
 #include <string>
 #include <thread>
@@ -53,6 +55,18 @@ static void BM_SparseBurst_Traffic(benchmark::State &state) {
       keys.begin(), keys.end(),
       std::tuple{config::kBurstCapacity, 1.0F}};
 
+  static std::mutex s_mtx;
+  static std::vector<std::vector<double>> s_per_thread_lats;
+  static std::atomic<int> s_done{0};
+  {
+    std::lock_guard lk(s_mtx);
+    if (s_per_thread_lats.size() != static_cast<size_t>(state.threads())) {
+      s_per_thread_lats.resize(state.threads());
+    }
+    s_per_thread_lats[state.thread_index()].clear();
+  }
+  s_done.store(0, std::memory_order_release);
+
   std::vector<double> latencies;
   latencies.reserve(kLatencyCapacity);
 
@@ -80,13 +94,27 @@ static void BM_SparseBurst_Traffic(benchmark::State &state) {
     latencies.push_back(duration_ns);
   }
 
-  if (!latencies.empty()) {
-    std::sort(latencies.begin(), latencies.end());
-    const double p50 = latencies[static_cast<std::size_t>(latencies.size() * 0.50)];
-    const double p99 = latencies[static_cast<std::size_t>(latencies.size() * 0.99)];
+  {
+    std::lock_guard lk(s_mtx);
+    s_per_thread_lats[state.thread_index()] = std::move(latencies);
+  }
 
-    state.counters["p50_ns"] = benchmark::Counter(p50, benchmark::Counter::kAvgThreads);
-    state.counters["p99_ns"] = benchmark::Counter(p99, benchmark::Counter::kAvgThreads);
+  int done = s_done.fetch_add(1, std::memory_order_acq_rel) + 1;
+  if (done == state.threads()) {
+    std::vector<double> all;
+    for (int i = 0; i < state.threads(); ++i) {
+      all.insert(all.end(), s_per_thread_lats[i].begin(),
+                 s_per_thread_lats[i].end());
+    }
+    if (!all.empty()) {
+      std::sort(all.begin(), all.end());
+      size_t sz = all.size();
+      double p50 = all[static_cast<size_t>(sz * 0.50)];
+      double p99 = all[static_cast<size_t>(sz * 0.99)];
+
+      state.counters["p50_ns"] = benchmark::Counter(p50);
+      state.counters["p99_ns"] = benchmark::Counter(p99);
+    }
   }
 
   state.SetItemsProcessed(state.iterations());
@@ -108,6 +136,18 @@ static void BM_SparseBurst_CrossShard_Traffic(benchmark::State &state) {
       std::tuple{config::kBurstCapacity, 1.0F}};
 
   const avito_limiter::key_type &key = CrossShardKeyForThread(keys, static_cast<int>(state.thread_index()));
+
+  static std::mutex s_mtx_cs;
+  static std::vector<std::vector<double>> s_per_thread_lats_cs;
+  static std::atomic<int> s_done_cs{0};
+  {
+    std::lock_guard lk(s_mtx_cs);
+    if (s_per_thread_lats_cs.size() != static_cast<size_t>(state.threads())) {
+      s_per_thread_lats_cs.resize(state.threads());
+    }
+    s_per_thread_lats_cs[state.thread_index()].clear();
+  }
+  s_done_cs.store(0, std::memory_order_release);
 
   std::vector<double> latencies;
   latencies.reserve(kLatencyCapacity);
@@ -136,13 +176,27 @@ static void BM_SparseBurst_CrossShard_Traffic(benchmark::State &state) {
     latencies.push_back(duration_ns);
   }
 
-  if (!latencies.empty()) {
-    std::sort(latencies.begin(), latencies.end());
-    const double p50 = latencies[static_cast<std::size_t>(latencies.size() * 0.50)];
-    const double p99 = latencies[static_cast<std::size_t>(latencies.size() * 0.99)];
+  {
+    std::lock_guard lk(s_mtx_cs);
+    s_per_thread_lats_cs[state.thread_index()] = std::move(latencies);
+  }
 
-    state.counters["p50_ns"] = benchmark::Counter(p50, benchmark::Counter::kAvgThreads);
-    state.counters["p99_ns"] = benchmark::Counter(p99, benchmark::Counter::kAvgThreads);
+  int done = s_done_cs.fetch_add(1, std::memory_order_acq_rel) + 1;
+  if (done == state.threads()) {
+    std::vector<double> all;
+    for (int i = 0; i < state.threads(); ++i) {
+      all.insert(all.end(), s_per_thread_lats_cs[i].begin(),
+                 s_per_thread_lats_cs[i].end());
+    }
+    if (!all.empty()) {
+      std::sort(all.begin(), all.end());
+      size_t sz = all.size();
+      double p50 = all[static_cast<size_t>(sz * 0.50)];
+      double p99 = all[static_cast<size_t>(sz * 0.99)];
+
+      state.counters["p50_ns"] = benchmark::Counter(p50);
+      state.counters["p99_ns"] = benchmark::Counter(p99);
+    }
   }
 
   state.SetItemsProcessed(state.iterations());

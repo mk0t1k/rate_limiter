@@ -24,7 +24,6 @@ namespace config {
   constexpr double kBurstSleepSec = 1.0;
 
   // --- Zombie ---
-  constexpr int kZombieKeysCount = 5000;
   constexpr int kZombieReqsPerKey = 2;
   constexpr double kZombieTargetRatePerSec = 5000.0;
 
