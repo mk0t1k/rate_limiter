@@ -9,7 +9,7 @@
 
 #include "config.hpp"
 
-#include "limiters.hpp"
+#include "algorithms/limiters.hpp"
 
 namespace {
 
@@ -92,9 +92,10 @@ static void BM_Uniform_CrossShard_Traffic(benchmark::State& state) {
   dist.param(std::exponential_distribution<double>::param_type(per_thread_rate));
 
   static const std::vector<avito_limiter::key_type> keys = CrossShardKeys();
-  static const avito_limiter::SlidingWindowAlgo init_alg{
-    static_cast<std::size_t>(config::kBurstCapacity), 1.0F};
-  static LimiterType limiter{keys.begin(), keys.end(), init_alg};
+  static LimiterType limiter{
+      keys.begin(), keys.end(),
+      std::tuple<std::size_t, float>{
+          static_cast<std::size_t>(config::kBurstCapacity), 1.0F}};
 
   const avito_limiter::key_type& key =
     CrossShardKeyForThread(keys, static_cast<int>(state.thread_index()));

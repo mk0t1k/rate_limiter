@@ -1,28 +1,21 @@
 #include <benchmark/benchmark.h>
 
+#include <atomic>
 #include <random>
 #include <chrono>
 #include <thread>
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <optional>
 
 #include "config.hpp"
 
-#include "limiters.hpp"
+#include "algorithms/limiters.hpp"
 
 namespace {
 
   constexpr size_t kLatencyCapacity = 10000;
-
-  std::vector<avito_limiter::key_type> GenZombieKeys() {
-    std::vector<avito_limiter::key_type> keys;
-    keys.reserve(config::kZombieKeysCount);
-    for (int i = 0; i < config::kZombieKeysCount; ++i) {
-      keys.push_back("z_" + std::to_string(i));
-    }
-    return keys;
-  }
 
 } // namespace
 
@@ -38,10 +31,19 @@ static void BM_Zombie_Traffic(benchmark::State& state) {
   dist.param(
       std::exponential_distribution<double>::param_type(per_thread_rate));
 
-  static const std::vector<avito_limiter::key_type> keys = GenZombieKeys();
-  static LimiterType limiter{keys.begin(), keys.end()};
+  static std::atomic<size_t> next_key_id{0};
 
-  thread_local size_t key_index = 0;
+  static std::vector<avito_limiter::key_type> empty_keys;
+  static LimiterType limiter{
+      empty_keys.begin(), empty_keys.end(),
+      std::optional<double>{5.0},
+      std::optional<double>{1.0},
+      true};
+
+  thread_local size_t my_key_id = next_key_id.fetch_add(
+      1, std::memory_order_relaxed);
+  thread_local avito_limiter::key_type cached_key =
+      "z_" + std::to_string(my_key_id);
   thread_local int req_count = 0;
 
   std::vector<double> latencies;
@@ -52,9 +54,16 @@ static void BM_Zombie_Traffic(benchmark::State& state) {
     double delay_sec = dist(gen);
     std::this_thread::sleep_for(std::chrono::duration<double>(delay_sec));
 
+    if (req_count >= config::kZombieReqsPerKey) {
+      my_key_id = next_key_id.fetch_add(1, std::memory_order_relaxed);
+      cached_key = "z_" + std::to_string(my_key_id);
+      limiter.Emplace(cached_key);
+      req_count = 0;
+    }
+
     auto start = std::chrono::high_resolution_clock::now();
 
-    bool allowed = limiter.Access(keys[key_index]);
+    bool allowed = limiter.Access(cached_key);
     benchmark::DoNotOptimize(allowed);
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -64,10 +73,6 @@ static void BM_Zombie_Traffic(benchmark::State& state) {
     latencies.push_back(duration_ns);
 
     ++req_count;
-    if (req_count >= config::kZombieReqsPerKey) {
-      key_index = (key_index + 1) % config::kZombieKeysCount;
-      req_count = 0;
-    }
   }
 
   if (!latencies.empty()) {
