@@ -202,6 +202,10 @@ public:
     }
   }
 
+  bool AddKey(const key_type& key, ttl_val_type ttl = std::nullopt) override { 
+    return GetByKey(key)->AddKey(key, ttl);
+  }
+
   bool Exists(const key_type& key) const noexcept override {
     return GetByKey(key)->Exists(key);
   }
