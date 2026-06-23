@@ -17,6 +17,8 @@ FetchContent_MakeAvailable(googlebenchmark)
 add_executable(rate_limiter_bench ${CMAKE_CURRENT_SOURCE_DIR}/uniform_bm.cpp
                                   ${CMAKE_CURRENT_SOURCE_DIR}/diurnal_bm.cpp
                                   ${CMAKE_CURRENT_SOURCE_DIR}/sparse+burst_bm.cpp
+                                  ${CMAKE_CURRENT_SOURCE_DIR}/burst_bm.cpp
+                                  ${CMAKE_CURRENT_SOURCE_DIR}/zombie_bm.cpp
 )
 
 target_compile_features(rate_limiter_bench PRIVATE cxx_std_23)
