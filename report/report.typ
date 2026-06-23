@@ -271,7 +271,7 @@
 = 3. Экспериментальная часть
 
 #let verdict-supported = text(fill: green.darken(20%), weight: "bold")[подтверждена]
-#let verdict-partial = text(fill: orange.darken(20%), weight: "bold")[частично]
+#let verdict-partial = text(fill: orange.darken(20%), weight: "bold")[частично подтверждена]
 #let verdict-not = text(fill: red.darken(20%), weight: "bold")[не подтверждена]
 
 *Общие настройки:* `MinTime = 10 с`, `Repetitions = 3`, `Threads = 8`. Замерялись `p50` и `p99` latency вызова `Access()` (mean по повторам).
