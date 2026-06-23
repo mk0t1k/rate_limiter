@@ -42,7 +42,7 @@ LeakyBucketShaper::LeakyBucketShaper(
   std::size_t capacity, std::size_t cnt_remove, double wake_up_sec) :
   conf_{.capacity=capacity, .cnt_remove_per_run=cnt_remove, 
     .wakeup_dur=std::chrono::duration<double>(wake_up_sec)},
-  queue_update_{&LeakyBucketShaper::RunQueueThread, this} {}
+  queue_update_{[this](std::stop_token stok) { RunQueueThread(stok); }} {}
 
 std::optional<LeakyBucketShaper::future_type> LeakyBucketShaper::AddRequest(
   const key_type& key) {
