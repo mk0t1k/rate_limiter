@@ -1,0 +1,23 @@
+2026-06-23T17:05:43+03:00
+Running C:\programming\cpp\rate_limiter\build\benchmark\rate_limiter_bench.exe
+Run on (16 X 3992 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 1024 KiB (x8)
+  L3 Unified 16384 KiB (x1)
+name,iterations,real_time,cpu_time,time_unit,bytes_per_second,items_per_second,label,error_occurred,error_message,"p50_ns","p99_ns"
+"BM_Zombie_Traffic<avito_limiter::MutexTokenLimiter>/5000/min_time:10.000/repeats:3/threads:8",8000,1.15488e+07,5859.38,ns,,170667,,,,1200,121200
+"BM_Zombie_Traffic<avito_limiter::MutexTokenLimiter>/5000/min_time:10.000/repeats:3/threads:8",8000,1.1163e+07,11718.8,ns,,85333.3,,,,1100,117400
+"BM_Zombie_Traffic<avito_limiter::MutexTokenLimiter>/5000/min_time:10.000/repeats:3/threads:8",8000,1.01153e+07,5859.38,ns,,170667,,,,1000,84000
+"BM_Zombie_Traffic<avito_limiter::MutexTokenLimiter>/5000/min_time:10.000/repeats:3/threads:8_mean",3,1.09424e+07,7812.5,ns,,142222,,,,1100,107533
+"BM_Zombie_Traffic<avito_limiter::MutexTokenLimiter>/5000/min_time:10.000/repeats:3/threads:8_median",3,1.1163e+07,5859.38,ns,,170667,,,,1100,117400
+"BM_Zombie_Traffic<avito_limiter::MutexTokenLimiter>/5000/min_time:10.000/repeats:3/threads:8_stddev",3,741754,3382.91,ns,,49267.2,,,,100,20468.8
+"BM_Zombie_Traffic<avito_limiter::MutexTokenLimiter>/5000/min_time:10.000/repeats:3/threads:8_cv",3,0.0677873,0.433013,,,0.34641,,,,0.0909091,0.190349
+"BM_Zombie_Traffic<avito_limiter::MutexWinLimiter>/5000/min_time:10.000/repeats:3/threads:8",8000,1.29572e+07,9765.62,ns,,102400,,,,3100,259000
+"BM_Zombie_Traffic<avito_limiter::MutexWinLimiter>/5000/min_time:10.000/repeats:3/threads:8",8000,1.28878e+07,15625,ns,,64000,,,,2900,194800
+"BM_Zombie_Traffic<avito_limiter::MutexWinLimiter>/5000/min_time:10.000/repeats:3/threads:8",8000,9.90471e+06,5859.38,ns,,170667,,,,2100,129300
+"BM_Zombie_Traffic<avito_limiter::MutexWinLimiter>/5000/min_time:10.000/repeats:3/threads:8_mean",3,1.19166e+07,10416.7,ns,,112356,,,,2700,194367
+"BM_Zombie_Traffic<avito_limiter::MutexWinLimiter>/5000/min_time:10.000/repeats:3/threads:8_median",3,1.28878e+07,9765.62,ns,,102400,,,,2900,194800
+"BM_Zombie_Traffic<avito_limiter::MutexWinLimiter>/5000/min_time:10.000/repeats:3/threads:8_stddev",3,1.74268e+06,4915.26,ns,,54025.7,,,,529.15,64851.1
+"BM_Zombie_Traffic<avito_limiter::MutexWinLimiter>/5000/min_time:10.000/repeats:3/threads:8_cv",3,0.14624,0.471865,,,0.480846,,,,0.195982,0.333653

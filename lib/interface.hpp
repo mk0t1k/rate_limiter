@@ -108,7 +108,7 @@ public:
     return true;
   }
 
-  bool Access(const key_type& key) {
+  bool Access(const key_type& key) override {
     auto res = storage_.Visit(key, [](auto&& alg) {return alg.Access();});
     if(std::holds_alternative<std::false_type>(res)) {
       return false;
@@ -116,12 +116,20 @@ public:
     return std::get<bool>(res);
   }
 
-  std::size_t GetNumAvail(const key_type& key) const noexcept {
+  std::size_t GetNumAvail(const key_type& key) const noexcept override {
     auto res = storage_.Visit(key, [](auto&& alg) {return alg.GetNumAvail();});
     if(std::holds_alternative<std::false_type>(res)) {
       return 0UZ;
     }
     return std::get<std::size_t>(res);
+  }
+
+  bool Emplace(const key_type& key) {
+    return storage_.Emplace(key, std::tuple<>{});
+  }
+
+  std::size_t GetKeyCount() const noexcept {
+    return storage_.KeyCount();
   }
 };
 
@@ -216,6 +224,20 @@ public:
 
   std::size_t GetNumAvail(const key_type& key) const noexcept override {
     return GetByKey(key)->GetNumAvail(key);
+  }
+
+  bool Emplace(const key_type& key) {
+    return GetByKey(key)->Emplace(key);
+  }
+
+  std::size_t GetKeyCount() const noexcept {
+    std::size_t total = 0UZ;
+    for (std::size_t i = 0UZ; i < CountShards; ++i) {
+      const std::byte* byte_ptr = limiters_[i].bytes;
+      const Limiter* lim_ptr = reinterpret_cast<const Limiter*>(byte_ptr);
+      total += lim_ptr->GetKeyCount();
+    }
+    return total;
   }
 
   ~ShardedWrapper() {
