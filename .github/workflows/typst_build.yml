@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'report/report.typ'
+      - 'report/presentation.typ'
 
 jobs:
   build:
@@ -21,8 +22,11 @@ jobs:
       - name: Compile Typst report
         run: typst compile report/report.typ 
 
+      - name: Compile Typst presentation
+        run: typst compile report/presentation.typ
+
       - name: Commit PDF back to repo
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "${{ github.event.head_commit.message }} pdf"
-          file_pattern: 'report/report.pdf'
+          file_pattern: 'report/*.pdf'
