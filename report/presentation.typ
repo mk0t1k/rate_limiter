@@ -1,11 +1,19 @@
 #import "@preview/touying:0.5.3": *
 #import themes.simple: *
 
-#show: simple-theme.with(
-  aspect-ratio: "16-9",
-)
+#show: simple-theme.with(aspect-ratio: "16-9")
 
 #set text(size: 23pt)
+
+#align(center + horizon)[
+  #text(size: 2.5em, weight: "bold")[Rate Limiter]
+  
+  #v(0.5em)
+  
+  #text(size: 1.2em)[Сравнение алгоритмов ограничения частоты запросов]
+  
+  #v(2em)
+]
 
 == Проблематика и задачи
 
