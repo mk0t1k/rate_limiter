@@ -22,7 +22,7 @@ int main() {
 
   std::vector<avito_limiter::key_type> keys = {"a", "cd", "ef"};
   avito_limiter::ShardedTokenLimiter<4U, true> c_sharded{keys.begin(), keys.end(), 
-    std::tuple<std::size_t, float>{3Z, 2.0F}, 4.0, 1.0};
+    std::tuple<std::size_t, float>{3Z, 2.0F}};
   //avito_limiter::MutexStorage<avito_limiter::TokenBucketAlgo, 
   //  avito_limiter::key_type> stor{keys.begin(), keys.end(), 
   //    std::tuple<std::size_t, float>{3Z, 4.0F}, std::nullopt};
@@ -31,7 +31,7 @@ int main() {
   };
   
   avito_limiter::IRateLimiter* intfc = new avito_limiter::MutexTokenLimiter{
-    keys.begin(), keys.end(), std::tuple<std::size_t, float>{3Z, 2.0F}, 4.0, 1.0};
+    keys.begin(), keys.end(), std::tuple<std::size_t, float>{3Z, 2.0F}};
   intfc->AddKey("haha");
   while (true) {
     std::string key_name;
