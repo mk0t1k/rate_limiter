@@ -17,11 +17,6 @@ void PrintAccessInfo(const avito_limiter::key_type& key_name,
 }
 
 int main() {
-  using mutex_cont = avito_limiter::MutexStorage<
-    avito_limiter::TokenBucketAlgo, avito_limiter::key_type>;
-  using sharded_cont = avito_limiter::ShardedWrapper<
-    avito_limiter::MutexTokenLimiter, avito_limiter::key_type, 4UZ>;
-
   std::vector<avito_limiter::key_type> keys = {"a", "cd", "ef"};
   avito_limiter::ShardedTokenLimiter<4U, true> c_sharded{keys.begin(), keys.end(), 
     std::tuple<std::size_t, float>{3Z, 2.0F}, 4.0, 1.0};
@@ -34,6 +29,7 @@ int main() {
   
   avito_limiter::IRateLimiter* intfc = new avito_limiter::MutexTokenLimiter{
     keys.begin(), keys.end(), std::tuple<std::size_t, float>{3Z, 2.0F}, 4.0, 1.0};
+  intfc->AddKey("haha");
   while (true) {
     std::string key_name;
     std::cin >> key_name;

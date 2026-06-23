@@ -31,6 +31,11 @@ public:
     return !static_cast<bool>(ttl_);
   }
 
+  void SetTtl(value_type val) noexcept {
+    prolong_sec_ = val;
+    Prolong();
+  }
+
   void Prolong() const noexcept {
     ttl_.Set(prolong_sec_);
   }

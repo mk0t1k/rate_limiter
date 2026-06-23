@@ -60,17 +60,21 @@ public:
   using time_offs_t = typename stored_data_t::value_type;
   using time_val_t = typename time_offs_t::value_type;
 private:
-  struct Data : impl::MutexWrapper<MutexPerKey::value> {
-    StoredData<Alg, Clock> rate_limiter;
+  template<bool UseMutex>
+  struct Data : impl::MutexWrapper<UseMutex> {
+    stored_data_t rate_limiter;
 
     template<typename ... Types, std::size_t ... Nums>
-    StoredData<Alg, Clock> CreateLimiterHelper(
+    stored_data_t CreateLimiterHelper(
       time_offs_t offs, const std::tuple<Types...>& alg_args, 
       std::index_sequence<Nums...> seq
     ) {
-      return StoredData<Alg, Clock>{offs, std::get<Nums>(alg_args)...};
+      return stored_data_t{offs, std::get<Nums>(alg_args)...};
     }
     
+    template<typename Sdata>
+    Data(Sdata&& dt) : rate_limiter{std::forward<Sdata>(dt)} {}
+
     template<typename ... Types>
     Data(
       time_offs_t offs, const std::tuple<Types...>& alg_args) : 
@@ -107,14 +111,15 @@ private:
     }
   };
 
-  using stored_type = std::unordered_map<KeyType, Data>;
+  using data_container_t = Data<MutexPerKey::value>;
+  using stored_type = std::unordered_map<KeyType, data_container_t>;
   stored_type keys_;
   using iter_type = typename stored_type::iterator;
   mutable std::shared_mutex main_mutex_;
   std::optional<std::thread> cleaner_thread_;
   std::optional<std::atomic_bool> cleaner_run_;
   std::optional<LazyState> lazy_state_;
-  time_offs_t key_ttl_;
+  Data<false> default_algo_;
 
   void DoCleanup() {
     auto curr_it = keys_.begin();
@@ -153,12 +158,11 @@ public:
 
   MutexStorage() = default;
 
-  explicit MutexStorage(time_offs_t key_ttl) : key_ttl_{key_ttl} {}
-
   template<std::input_iterator InputIt, typename Sentinel>
   MutexStorage(InputIt begin, Sentinel end, 
     time_offs_t key_prolong = std::nullopt, 
-    time_offs_t update_dur = std::nullopt, bool is_lazy=false) { 
+    time_offs_t update_dur = std::nullopt, bool is_lazy=false) : 
+    default_algo_{key_prolong, std::tuple<>{}} { 
     while (begin != end) {
       keys_.try_emplace(*begin, key_prolong, std::tuple<>{});
       ++begin;
@@ -170,7 +174,8 @@ public:
   MutexStorage(InputIt begin, Sentinel end, 
     const std::tuple<AlgTypes...>& alg_args, 
     time_offs_t key_prolong = std::nullopt,
-    time_offs_t update_dur = std::nullopt, bool is_lazy=false) {
+    time_offs_t update_dur = std::nullopt, bool is_lazy=false) : 
+    default_algo_{key_prolong, alg_args} {
     while (begin != end) {
       keys_.try_emplace(*begin, key_prolong, alg_args);
       ++begin;
@@ -182,8 +187,12 @@ public:
 
   MutexStorage& operator=(const MutexStorage& other) = delete;
 
-  void SetKeyTtl(time_offs_t ttl_val) {
-    key_ttl_ = ttl_val;
+  bool Add(const KeyType& key, time_offs_t key_ttl = std::nullopt) {
+    std::unique_lock lk(main_mutex_);
+    auto tmp = default_algo_.rate_limiter;
+    tmp.SetTtl(key_ttl);
+    auto res = keys_.try_emplace(key, std::move(tmp));
+    return res.second;
   }
 
   template<typename ... Types>
@@ -191,13 +200,6 @@ public:
     const std::tuple<Types...>& alg_args) {
     std::unique_lock lk(main_mutex_);
     auto res = keys_.try_emplace(key, key_ttl, alg_args);
-    return res.second;
-  }
-
-  template<typename ... Types>
-  bool Emplace(const KeyType& key, const std::tuple<Types...>& alg_args) {
-    std::unique_lock lk(main_mutex_);
-    auto res = keys_.try_emplace(key, key_ttl_, alg_args);
     return res.second;
   }
 
