@@ -16,8 +16,7 @@ private:
   using time_point = decltype(clock_type::now());
   using duration_type = typename clock_type::duration;
 
-  using stored_type = std::priority_queue<time_point, 
-    std::vector<time_point>, std::greater<time_point>>;
+  using stored_type = std::queue<time_point>;
   mutable stored_type accesses_;
   std::size_t capacity_ = 0U;
   float time_offs_sec_ = 0.0F;
@@ -28,7 +27,7 @@ private:
     duration_type casted_offset = 
       std::chrono::duration_cast<duration_type>(offset_duration);
     time_point cull_point = curr - casted_offset;
-    while (accesses_.size() && accesses_.top() < cull_point) {
+    while (accesses_.size() && accesses_.front() < cull_point) {
       accesses_.pop();
     }
   }

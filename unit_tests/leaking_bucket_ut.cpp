@@ -97,7 +97,7 @@ TEST(LeakingBucketTests, ConcurrencyTest) {
     for (size_t i = 0; i < mx_ths; ++i) {
         ths.emplace_back([=,&shaper](){
             for (int j = 0; j < 2; ++j) {
-                std::this_thread::sleep_for(std::chrono::milliseconds{i * 2 + j * 2});
+                std::this_thread::sleep_for(std::chrono::milliseconds{i * 18 + j * 2});
                 auto res = shaper.AddRequest(std::to_string(j));
                 EXPECT_TRUE(static_cast<bool>(res));
             }
