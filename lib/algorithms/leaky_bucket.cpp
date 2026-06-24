@@ -1,73 +1,69 @@
-#include "leaky_bucket.hpp"
+#pragma once
+
+#include <cstddef>
 
 #include <chrono>
-#include <condition_variable>
-#include <mutex>
-#include <stop_token>
-#include <thread>
+#include <queue>
+#include <stdexcept>
 
 namespace avito_limiter {
 
-void LeakyBucketShaper::UpdateQueue() {
-  for(std::size_t _ = 0U; _ < conf_.cnt_remove_per_run && !queue_.empty(); ++_) {
-    QueueValue val = std::move(queue_.front());
-    queue_.pop();
-    val.prom.set_value(true);
-  }
-}
+template <typename Derived, typename Clock>
+class SlidingWindowAlgo {
+public:
+  using clock_type = Clock;
+private:
+  using time_point = decltype(clock_type::now());
+  using duration_type = typename clock_type::duration;
 
-void LeakyBucketShaper::RunQueueThread(std::stop_token stoken) {
-  while (!stoken.stop_requested()) {
-    std::unique_lock ul(mtx_);
-    cva_.wait_for(ul, conf_.wakeup_dur, [this]{ return force_trigger_ || stop_flag_; });
+  using stored_type = std::queue<time_point>;
+  mutable stored_type accesses_;
+  std::size_t capacity_ = 0U;
+  float time_offs_sec_ = 0.0F;
 
-    if(force_trigger_) {
-      force_trigger_ = false;
+  void Update() const {
+    time_point curr = clock_type::now();
+    std::chrono::duration<float> offset_duration(time_offs_sec_);
+    duration_type casted_offset = 
+      std::chrono::duration_cast<duration_type>(offset_duration);
+    time_point cull_point = curr - casted_offset;
+    while (accesses_.size() && accesses_.front() < cull_point) {
+      accesses_.pop();
     }
-    if(stop_flag_) {
-      break;
+  }
+public:
+
+  SlidingWindowAlgo() = default;
+
+  SlidingWindowAlgo(std::size_t capacity, float dur_sec) {
+    if(dur_sec != dur_sec) {
+      throw std::logic_error{"Duration must be real"};
     }
-
-    UpdateQueue();
+    capacity_ = capacity;
+    time_offs_sec_ = dur_sec;
   }
-}
 
-void LeakyBucketShaper::ForceTrigger() {
-  std::unique_lock lock(mtx_);
-  force_trigger_ = true;
-  cva_.notify_one();
-}
-
-LeakyBucketShaper::LeakyBucketShaper(
-  std::size_t capacity, std::size_t cnt_remove, double wake_up_sec) :
-  conf_{.capacity=capacity, .cnt_remove_per_run=cnt_remove, 
-    .wakeup_dur=std::chrono::duration<double>(wake_up_sec)},
-  queue_update_{[this](std::stop_token stok) { RunQueueThread(stok); }} {}
-
-std::optional<LeakyBucketShaper::future_type> LeakyBucketShaper::AddRequest(
-  const key_type& key) {
-  std::unique_lock sl(mtx_);
-  if(queue_.size() + 1Z > conf_.capacity) {
-    return std::nullopt;
+  bool Access() {
+    if(static_cast<Derived*>(this)->IsExpired()) {
+      return false;
+    }
+    static_cast<Derived*>(this)->Prolong();
+    Update();
+    if(accesses_.size() == capacity_) {
+      return false;
+    }
+    if(time_offs_sec_ > 0.0F) {
+      accesses_.push(clock_type::now());
+    }
+    return true;
   }
-  queue_.emplace(key);
-  future_type fut = queue_.back().prom.get_future();
-  return fut;
-}
 
-std::size_t LeakyBucketShaper::GetNumAvail() const noexcept {
-  std::shared_lock sl(mtx_);
-  return conf_.capacity - queue_.size();
-}
-
-LeakyBucketShaper::~LeakyBucketShaper() {
-  {
-    std::unique_lock lock(mtx_);
-    stop_flag_ = true;
-    cva_.notify_one();
+  std::size_t GetNumAvail() const noexcept {
+    if(static_cast<const Derived*>(this)->IsExpired()) {
+      return 0Z;
+    }
+    Update();
+    return static_cast<std::size_t>(capacity_ - accesses_.size());
   }
-  if(queue_update_.joinable()) {
-    queue_update_.join();
-  }
-}
+};
 } // namespace avito_limiter
