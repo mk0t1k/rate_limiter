@@ -2,11 +2,17 @@
 *.la
 *.a
 *.lib
+*.o
 
 # Executables
 *.exe
 *.out
 *.app
+<<<<<<< HEAD
+*.elf
+=======
+*.o
+>>>>>>> justNotherbot-dev
 
 # Build directories
 build/
@@ -37,3 +43,4 @@ vcpkg_installed/
 Testing/
 .cache/
 .vscode/
+Guide.md
